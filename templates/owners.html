@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إدارة الملاك - شركة كثيب للاستثمار</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://www.fontstatic.com/f=jazeera,jazeera-light" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='custom.css') }}">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('dashboard') }}">
+                <img src="{{ url_for('static', filename='logo.svg') }}" alt="شركة كثيب للاستثمار" height="40">
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <div class="navbar-nav ms-auto">
+                    <a class="nav-link{% if active_page == 'dashboard' %} active{% endif %}" href="{{ url_for('dashboard') }}"><i class="fas fa-home"></i> الرئيسية</a>
+                    <a class="nav-link{% if active_page == 'owners' %} active{% endif %}" href="{{ url_for('owners_view') }}"><i class="fas fa-users"></i> الملاك</a>
+                    <a class="nav-link{% if active_page == 'tenants' %} active{% endif %}" href="{{ url_for('tenants_view') }}"><i class="fas fa-building"></i> المستأجرين</a>
+                    <a class="nav-link{% if active_page == 'projects' %} active{% endif %}" href="{{ url_for('projects_view') }}"><i class="fas fa-project-diagram"></i> المشاريع</a>
+                    <a class="nav-link{% if active_page == 'payments' %} active{% endif %}" href="{{ url_for('payments_view') }}"><i class="fas fa-money-bill-wave"></i> الدفعات</a>
+                    <a class="nav-link{% if active_page == 'reports' %} active{% endif %}" href="{{ url_for('reports_view') }}"><i class="fas fa-chart-bar"></i> التقارير</a>
+                    <a class="nav-link" href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> خروج</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+    <div class="container mt-4">
+        <h1>إدارة الملاك</h1>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>إضافة مالك جديد</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST">
+                            <div class="mb-3">
+                                <label for="name" class="form-label">الاسم</label>
+                                <input type="text" class="form-control" id="name" name="name" required minlength="2" maxlength="120">
+                            </div>
+                            <div class="mb-3">
+                                <label for="national_id" class="form-label">رقم الهوية الوطنية</label>
+                                <input type="text" class="form-control" id="national_id" name="national_id" pattern="[0-9]{10}" title="يجب أن يكون 10 أرقام">
+                            </div>
+                            <div class="mb-3">
+                                <label for="phone" class="form-label">الهاتف</label>
+                                <input type="tel" class="form-control" id="phone" name="phone" pattern="[0-9]{10}" title="يجب أن يكون 10 أرقام">
+                            </div>
+                            <div class="mb-3">
+                                <label for="email" class="form-label">البريد الإلكتروني</label>
+                                <input type="email" class="form-control" id="email" name="email">
+                            </div>
+                            <div class="mb-3">
+                                <label for="address" class="form-label">العنوان</label>
+                                <textarea class="form-control" id="address" name="address" maxlength="255"></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label for="sab_number" class="form-label">رقم الساب</label>
+                                <input type="text" class="form-control" id="sab_number" name="sab_number" maxlength="50">
+                            </div>
+                            <button type="submit" class="btn btn-primary">إضافة</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-8">
+                <h3>قائمة الملاك</h3>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>الاسم</th>
+                                <th>رقم الهوية</th>
+                                <th>الهاتف</th>
+                                <th>البريد الإلكتروني</th>
+                                <th>العنوان</th>
+                                <th>رقم الساب</th>
+                                <th>الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for owner in owners %}
+                            <tr>
+                                <td>{{ owner.name }}</td>
+                                <td>{{ owner.national_id }}</td>
+                                <td>{{ owner.phone }}</td>
+                                <td>{{ owner.email }}</td>
+                                <td>{{ owner.address }}</td>
+                                <td>{{ owner.sab_number or '' }}</td>
+                                <td>
+                                    <a href="{{ url_for('edit_owner', owner_id=owner.id) }}" class="btn btn-sm btn-warning me-1">
+                                        <i class="fas fa-edit"></i> تعديل
+                                    </a>
+                                    <button type="button" class="btn btn-sm btn-danger" data-owner-id="{{ owner.id }}" data-owner-name="{{ owner.name }}" onclick="deleteOwner(this.dataset.ownerId, this.dataset.ownerName)">
+                                        <i class="fas fa-trash"></i> حذف
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function deleteOwner(ownerId, ownerName) {
+            if (confirm('هل أنت متأكد من حذف المالك "' + ownerName + '"؟\n\nسيتم حذف جميع المستأجرين المرتبطين بهذا المالك أيضاً.')) {
+                fetch('/delete_owner/' + ownerId, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert('حدث خطأ أثناء الحذف');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('حدث خطأ أثناء الحذف');
+                });
+            }
+        }
+    </script>
+</body>
+</html>

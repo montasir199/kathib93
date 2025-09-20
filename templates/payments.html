@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل الدفعات - شركة كثيب للاستثمار</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://www.fontstatic.com/f=jazeera,jazeera-light" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='custom.css') }}">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('dashboard') }}">
+                <img src="{{ url_for('static', filename='logo.svg') }}" alt="شركة كثيب للاستثمار" height="40">
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <div class="navbar-nav ms-auto">
+                    <a class="nav-link{% if active_page == 'dashboard' %} active{% endif %}" href="{{ url_for('dashboard') }}"><i class="fas fa-home"></i> الرئيسية</a>
+                    <a class="nav-link{% if active_page == 'owners' %} active{% endif %}" href="{{ url_for('owners_view') }}"><i class="fas fa-users"></i> الملاك</a>
+                    <a class="nav-link{% if active_page == 'tenants' %} active{% endif %}" href="{{ url_for('tenants_view') }}"><i class="fas fa-building"></i> المستأجرين</a>
+                    <a class="nav-link{% if active_page == 'projects' %} active{% endif %}" href="{{ url_for('projects_view') }}"><i class="fas fa-project-diagram"></i> المشاريع</a>
+                    <a class="nav-link{% if active_page == 'payments' %} active{% endif %}" href="{{ url_for('payments_view') }}"><i class="fas fa-money-bill-wave"></i> الدفعات</a>
+                    <a class="nav-link{% if active_page == 'reports' %} active{% endif %}" href="{{ url_for('reports_view') }}"><i class="fas fa-chart-bar"></i> التقارير</a>
+                    <a class="nav-link" href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> خروج</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+    <div class="container mt-4">
+        <h1>تسجيل الدفعات</h1>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <button type="button" class="btn btn-primary btn-lg" data-bs-toggle="modal" data-bs-target="#addPaymentModal">
+                            <i class="fas fa-plus-circle"></i> إضافة دفعة جديدة
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <h3>ملاحظات</h3>
+                <p>اختر الوحدة، نوع الدافع (مالك أو مستأجر)، واختر الدافع من القائمة.</p>
+                <p>النسب الافتراضية: 5% للشركة، 15% ضريبة القيمة المضافة.</p>
+            </div>
+        </div>
+
+        <!-- Large Payment Modal -->
+        <div class="modal fade" id="addPaymentModal" tabindex="-1" aria-labelledby="addPaymentModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="addPaymentModalLabel">إضافة دفعة جديدة</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form method="POST" id="paymentForm">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="unit_id" class="form-label">الوحدة</label>
+                                        <select class="form-control unit-select" id="unit_id" name="unit_id" required>
+                                            <option value="">اختر الوحدة</option>
+                                            {% for unit in units %}
+                                            <option value="{{ unit.id }}">{{ unit.unit_number }} ({{ unit.project.name if unit.project else '' }})</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="payer_type" class="form-label">نوع الدافع</label>
+                                        <select class="form-control" id="payer_type" name="payer_type" required>
+                                            <option value="owner">مالك</option>
+                                            <option value="tenant">مستأجر</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="payer_id" class="form-label">معرف الدافع</label>
+                                <select class="form-control" id="payer_id" name="payer_id" required
+                                        data-owners='{{ owners|tojson }}'
+                                        data-tenants='{{ tenants|tojson }}'>
+                                    <option value="">اختر الدافع</option>
+                                </select>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="amount" class="form-label">المبلغ</label>
+                                        <input type="number" step="0.01" class="form-control" id="amount" name="amount" required min="0.01">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="payment_date" class="form-label">تاريخ الدفعة</label>
+                                        <input type="date" class="form-control" id="payment_date" name="payment_date">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="company_rate" class="form-label">نسبة الشركة</label>
+                                        <input type="number" step="0.01" class="form-control" id="company_rate" name="company_rate" value="0.05" min="0" max="1">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="vat_rate" class="form-label">معدل ضريبة القيمة المضافة</label>
+                                        <input type="number" step="0.01" class="form-control" id="vat_rate" name="vat_rate" value="0.15" min="0" max="1">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="description" class="form-label">الوصف</label>
+                                <textarea class="form-control" id="description" name="description" maxlength="255" rows="3"></textarea>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                        <button type="submit" form="paymentForm" class="btn btn-primary">تسجيل الدفعة</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5>الدفعات</h5>
+                        <div class="d-flex gap-2">
+                            <a href="{{ url_for('export_payments_csv', **request.args) }}" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-file-csv"></i> تصدير CSV
+                            </a>
+                            <a href="{{ url_for('export_payments_excel', **request.args) }}" class="btn btn-sm btn-outline-success">
+                                <i class="fas fa-file-excel"></i> تصدير Excel
+                            </a>
+                            <a href="{{ url_for('export_payments_text', **request.args) }}" class="btn btn-sm btn-outline-info">
+                                <i class="fas fa-file-alt"></i> تصدير نص
+                            </a>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <form method="GET" class="mb-3">
+                            <div class="row">
+                                <div class="col-md-2">
+                                    <input type="text" name="search" class="form-control" placeholder="البحث في الوصف أو المبلغ" value="{{ search }}">
+                                </div>
+                                <div class="col-md-2">
+                                    <input type="date" name="start_date" class="form-control" placeholder="من تاريخ">
+                                </div>
+                                <div class="col-md-2">
+                                    <input type="date" name="end_date" class="form-control" placeholder="إلى تاريخ">
+                                </div>
+                                <div class="col-md-3">
+                                    <select name="project_id" class="form-control">
+                                        <option value="">جميع المشاريع</option>
+                                        {% for project in projects %}
+                                        <option value="{{ project.id }}" {% if request.args.get('project_id') == project.id|string %}selected{% endif %}>{{ project.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <button type="submit" class="btn btn-primary w-100">فلترة وبحث</button>
+                                </div>
+                            </div>
+                        </form>
+                        <!-- Summary Statistics -->
+                        {% if payments %}
+                        <div class="row mb-3">
+                            <div class="col-md-3">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h6 class="card-title">إجمالي المبالغ</h6>
+                                        <h4 class="text-primary">{{ "%.2f"|format(payments|sum(attribute='amount')) }} ريال</h4>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h6 class="card-title">إجمالي العمولات</h6>
+                                        <h4 class="text-success">{{ "%.2f"|format(payments|sum(attribute='company_commission')) }} ريال</h4>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h6 class="card-title">إجمالي الضرائب</h6>
+                                        <h4 class="text-warning">{{ "%.2f"|format(payments|sum(attribute='vat_on_commission')) }} ريال</h4>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h6 class="card-title">صافي للمالكين</h6>
+                                        <h4 class="text-info">{{ "%.2f"|format(payments|sum(attribute='net_to_owner')) }} ريال</h4>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        <div class="table-responsive payments-table">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>التاريخ</th>
+                                        <th>الوحدة</th>
+                                        <th>نوع الدافع</th>
+                                        <th>الدافع</th>
+                                        <th>المبلغ</th>
+                                        <th>عمولة الشركة</th>
+                                        <th>ضريبة القيمة المضافة</th>
+                                        <th>صافي للمالك</th>
+                                        <th>الوصف</th>
+                                        <th>الإجراءات</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for payment in payments %}
+                                    <tr>
+                                        <td>{{ payment.date.strftime('%Y-%m-%d') }}</td>
+                                        <td>{{ payment.unit.unit_number if payment.unit else 'غير محدد' }}</td>
+                                        <td>{{ 'مالك' if payment.payer_type == 'owner' else 'مستأجر' }}</td>
+                                        <td>{{ payment.payer_name }}</td>
+                                        <td>{{ payment.amount }}</td>
+                                        <td>{{ payment.company_commission }}</td>
+                                        <td>{{ payment.vat_on_commission }}</td>
+                                        <td>{{ payment.net_to_owner }}</td>
+                                        <td>{{ payment.description or '' }}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-primary" onclick="editPayment('{{ payment.id }}')">
+                                                <i class="fas fa-edit"></i> تعديل
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger" onclick="deletePayment('{{ payment.id }}')">
+                                                <i class="fas fa-trash"></i> حذف
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <!-- Pagination -->
+                        {% if total_pages > 1 %}
+                        <nav aria-label="صفحات الدفعات" class="mt-3">
+                            <ul class="pagination justify-content-center">
+                                {% if page > 1 %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('payments_view', page=page-1, search=search, start_date=request.args.get('start_date'), end_date=request.args.get('end_date'), project_id=request.args.get('project_id')) }}">السابق</a>
+                                </li>
+                                {% endif %}
+                                {% for page_num in range(max(1, page-2), min(total_pages+1, page+3)) %}
+                                <li class="page-item {% if page_num == page %}active{% endif %}">
+                                    <a class="page-link" href="{{ url_for('payments_view', page=page_num, search=search, start_date=request.args.get('start_date'), end_date=request.args.get('end_date'), project_id=request.args.get('project_id')) }}">{{ page_num }}</a>
+                                </li>
+                                {% endfor %}
+                                {% if page < total_pages %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('payments_view', page=page+1, search=search, start_date=request.args.get('start_date'), end_date=request.args.get('end_date'), project_id=request.args.get('project_id')) }}">التالي</a>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/i18n/ar.js"></script>
+    <script>
+        // Auto-fill when unit is selected
+        $(document).on('change', '#unit_id', function() {
+            const unitId = $(this).val();
+            if (unitId) {
+                fetch('/api/unit/' + unitId)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.is_rented && data.tenant) {
+                            // Set payer type to tenant
+                            $('#payer_type').val('tenant').trigger('change');
+                            // Set payer id to the tenant after a short delay
+                            setTimeout(() => {
+                                $('#payer_id').val(data.tenant.id);
+                            }, 100);
+                            // Set payment date if rent_date is available
+                            if (data.rent_date) {
+                                $('#payment_date').val(data.rent_date);
+                            }
+                        }
+                    })
+                    .catch(error => console.error('Error fetching unit details:', error));
+            }
+        });
+
+        document.getElementById('payer_type').addEventListener('change', function() {
+            const payerType = this.value;
+            const payerSelect = document.getElementById('payer_id');
+            const ownersData = JSON.parse(payerSelect.getAttribute('data-owners') || '[]');
+            const tenantsData = JSON.parse(payerSelect.getAttribute('data-tenants') || '[]');
+
+            payerSelect.innerHTML = '<option value="">اختر الدافع</option>';
+
+            if (payerType === 'owner') {
+                ownersData.forEach(function(owner) {
+                    const option = document.createElement('option');
+                    option.value = owner.id;
+                    option.textContent = owner.name + ' (' + owner.national_id + ')';
+                    payerSelect.appendChild(option);
+                });
+            } else if (payerType === 'tenant') {
+                tenantsData.forEach(function(tenant) {
+                    const option = document.createElement('option');
+                    option.value = tenant.id;
+                    option.textContent = tenant.name;
+                    payerSelect.appendChild(option);
+                });
+            }
+        });
+
+        function editPayment(paymentId) {
+            // Redirect to edit page or open modal
+            window.location.href = '/edit_payment/' + paymentId;
+        }
+
+        function deletePayment(paymentId) {
+            if (confirm('هل أنت متأكد من حذف هذه الدفعة؟')) {
+                fetch('/delete_payment/' + paymentId, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(function(response) { return response.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert('حدث خطأ أثناء الحذف');
+                    }
+                })
+                .catch(function(error) {
+                    console.error('Error:', error);
+                    alert('حدث خطأ أثناء الحذف');
+                });
+            }
+        }
+
+        // Form validation
+        document.querySelector('form').addEventListener('submit', function(e) {
+            const amount = document.getElementById('amount').value;
+            const payerId = document.getElementById('payer_id').value;
+            const unitId = document.getElementById('unit_id').value;
+
+            if (!unitId) {
+                alert('يرجى اختيار الوحدة');
+                e.preventDefault();
+                return false;
+            }
+
+            if (!payerId) {
+                alert('يرجى اختيار الدافع');
+                e.preventDefault();
+                return false;
+            }
+
+            if (!amount || parseFloat(amount) <= 0) {
+                alert('يرجى إدخال مبلغ صحيح أكبر من صفر');
+                e.preventDefault();
+                return false;
+            }
+
+            const companyRate = parseFloat(document.getElementById('company_rate').value);
+            const vatRate = parseFloat(document.getElementById('vat_rate').value);
+
+            if (companyRate < 0 || companyRate > 1) {
+                alert('نسبة الشركة يجب أن تكون بين 0 و 1');
+                e.preventDefault();
+                return false;
+            }
+
+            if (vatRate < 0 || vatRate > 1) {
+                alert('معدل ضريبة القيمة المضافة يجب أن يكون بين 0 و 1');
+                e.preventDefault();
+                return false;
+            }
+        });
+
+        // Initialize Flatpickr for date inputs
+        flatpickr("#payment_date", {
+            dateFormat: "Y-m-d",
+            maxDate: "today"
+        });
+
+        flatpickr("#start_date", {
+            dateFormat: "Y-m-d"
+        });
+
+        flatpickr("#end_date", {
+            dateFormat: "Y-m-d"
+        });
+
+        // Handle modal show event to initialize Select2
+        $('#addPaymentModal').on('shown.bs.modal', function () {
+            // Destroy existing Select2 if it exists
+            if ($('#unit_id').hasClass('select2-hidden-accessible')) {
+                $('#unit_id').select2('destroy');
+            }
+            // Initialize Select2 for unit selection in modal
+            $('#unit_id').select2({
+                placeholder: 'ابحث عن الوحدة...',
+                allowClear: true,
+                language: 'ar',
+                dropdownParent: $('#addPaymentModal .modal-content')
+            });
+        });
+
+        // Handle modal hide event to clean up
+        $('#addPaymentModal').on('hidden.bs.modal', function () {
+            // Destroy Select2 when modal closes
+            if ($('#unit_id').hasClass('select2-hidden-accessible')) {
+                $('#unit_id').select2('destroy');
+            }
+            // Reset form
+            $('#paymentForm')[0].reset();
+        });
+    </script>
+</body>
+</html>

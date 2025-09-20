@@ -1,0 +1,18 @@
+<svg width="250" height="60" viewBox="0 0 250 60" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="250" height="60" fill="#ffffff" stroke="#2c3e50" stroke-width="2" rx="8"/>
+
+  <!-- Company name in Arabic -->
+  <text x="125" y="25" font-family="serif" font-size="18" font-weight="bold" fill="#2c3e50" text-anchor="middle" direction="rtl">
+    شركة كثيب للاستثمار
+  </text>
+
+  <!-- Subtitle -->
+  <text x="125" y="45" font-family="sans-serif" font-size="12" fill="#7f8c8d" text-anchor="middle">
+    Kthaib Investment Company
+  </text>
+
+  <!-- Decorative elements -->
+  <rect x="15" y="15" width="10" height="30" fill="#3498db" rx="2"/>
+  <rect x="225" y="15" width="10" height="30" fill="#3498db" rx="2"/>
+</svg>

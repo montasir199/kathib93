@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تعديل المالك - شركة كثيب للاستثمار</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://www.fontstatic.com/f=jazeera,jazeera-light" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='custom.css') }}">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('dashboard') }}">
+                <img src="{{ url_for('static', filename='logo.svg') }}" alt="شركة كثيب للاستثمار" height="40">
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="{{ url_for('dashboard') }}">الرئيسية</a>
+                <a class="nav-link" href="{{ url_for('owners_view') }}">الملاك</a>
+                <a class="nav-link" href="{{ url_for('tenants_view') }}">المستأجرين</a>
+                <a class="nav-link" href="{{ url_for('projects_view') }}">المشاريع</a>
+                <a class="nav-link" href="{{ url_for('payments_view') }}">الدفعات</a>
+                <a class="nav-link" href="{{ url_for('reports_view') }}">التقارير</a>
+                <a class="nav-link" href="{{ url_for('logout') }}">خروج</a>
+            </div>
+        </div>
+    </nav>
+    <div class="container mt-4">
+        <h1>تعديل المالك</h1>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>بيانات المالك</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST">
+                            <div class="mb-3">
+                                <label for="name" class="form-label">الاسم</label>
+                                <input type="text" class="form-control" id="name" name="name" required minlength="2" maxlength="120" value="{{ owner.name }}">
+                            </div>
+                            <div class="mb-3">
+                                <label for="national_id" class="form-label">رقم الهوية الوطنية</label>
+                                <input type="text" class="form-control" id="national_id" name="national_id" pattern="[0-9]{10}" title="يجب أن يكون 10 أرقام" value="{{ owner.national_id }}">
+                            </div>
+                            <div class="mb-3">
+                                <label for="phone" class="form-label">الهاتف</label>
+                                <input type="tel" class="form-control" id="phone" name="phone" pattern="[0-9]{10}" title="يجب أن يكون 10 أرقام" value="{{ owner.phone }}">
+                            </div>
+                            <div class="mb-3">
+                                <label for="email" class="form-label">البريد الإلكتروني</label>
+                                <input type="email" class="form-control" id="email" name="email" value="{{ owner.email }}">
+                            </div>
+                            <div class="mb-3">
+                                <label for="address" class="form-label">العنوان</label>
+                                <textarea class="form-control" id="address" name="address" maxlength="255">{{ owner.address }}</textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label for="sab_number" class="form-label">رقم الساب</label>
+                                <input type="text" class="form-control" id="sab_number" name="sab_number" maxlength="50" value="{{ owner.sab_number }}">
+                            </div>
+                            <button type="submit" class="btn btn-primary">حفظ التغييرات</button>
+                            <a href="{{ url_for('owners_view') }}" class="btn btn-secondary">إلغاء</a>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

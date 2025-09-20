@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تعديل الوحدة - شركة كثيب للاستثمار</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://www.fontstatic.com/f=jazeera,jazeera-light" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='custom.css') }}">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('dashboard') }}">
+                <img src="{{ url_for('static', filename='logo.svg') }}" alt="شركة كثيب للاستثمار" height="40">
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="{{ url_for('dashboard') }}">الرئيسية</a>
+                <a class="nav-link" href="{{ url_for('owners_view') }}">الملاك</a>
+                <a class="nav-link" href="{{ url_for('tenants_view') }}">المستأجرين</a>
+                <a class="nav-link" href="{{ url_for('projects_view') }}">المشاريع</a>
+                <a class="nav-link" href="{{ url_for('payments_view') }}">الدفعات</a>
+                <a class="nav-link" href="{{ url_for('reports_view') }}">التقارير</a>
+                <a class="nav-link" href="{{ url_for('logout') }}">خروج</a>
+            </div>
+        </div>
+    </nav>
+    <div class="container mt-4">
+        <h1>تعديل الوحدة</h1>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>بيانات الوحدة</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST">
+                            <div class="mb-3">
+                                <label for="project_id" class="form-label">المشروع</label>
+                                <select class="form-control" id="project_id" name="project_id" required>
+                                    {% for project in projects %}
+                                    <option value="{{ project.id }}" {% if project.id == unit.project_id %}selected{% endif %}>{{ project.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="unit_number" class="form-label">رقم الوحدة</label>
+                                <input type="text" class="form-control" id="unit_number" name="unit_number" value="{{ unit.unit_number }}" required maxlength="50">
+                            </div>
+                            <div class="mb-3">
+                                <label for="type" class="form-label">النوع</label>
+                                <input type="text" class="form-control" id="type" name="type" value="{{ unit.type }}" maxlength="50">
+                            </div>
+                            <div class="mb-3">
+                                <label for="area" class="form-label">المساحة</label>
+                                <input type="number" step="0.01" class="form-control" id="area" name="area" value="{{ unit.area }}" min="0">
+                            </div>
+                            <div class="mb-3">
+                                <label for="owner_id" class="form-label">المالك</label>
+                                <input type="text" class="form-control mb-2" id="owner_search" placeholder="البحث في أسماء الملاك">
+                                <select class="form-control" id="owner_id" name="owner_id">
+                                    <option value="">بدون مالك</option>
+                                    {% for owner in owners %}
+                                    <option value="{{ owner.id }}" {% if owner.id == unit.owner_id %}selected{% endif %}>{{ owner.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="tenant_id" class="form-label">المستأجر</label>
+                                <select class="form-control" id="tenant_id" name="tenant_id">
+                                    <option value="">بدون مستأجر</option>
+                                    {% for tenant in tenants %}
+                                    <option value="{{ tenant.id }}" {% if tenant.id == unit.tenant_id %}selected{% endif %}>{{ tenant.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="status" class="form-label">الحالة</label>
+                                <select class="form-control" id="status" name="status" required>
+                                    <option value="available" {% if unit.status == 'available' %}selected{% endif %}>متاحة</option>
+                                    <option value="rented" {% if unit.status == 'rented' %}selected{% endif %}>مؤجرة</option>
+                                    <option value="sold" {% if unit.status == 'sold' %}selected{% endif %}>مباعة</option>
+                                </select>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary">حفظ التغييرات</button>
+                                <a href="{{ url_for('projects_view') }}" class="btn btn-secondary">إلغاء</a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Store original options
+        const ownerSelect = document.getElementById('owner_id');
+        const originalOptions = Array.from(ownerSelect.options);
+
+        document.getElementById('owner_search').addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            const select = document.getElementById('owner_id');
+
+            // Clear existing options
+            select.options.length = 0;
+
+            // Always add "بدون مالك" option
+            const noOwnerOption = new Option('بدون مالك', '');
+            select.add(noOwnerOption);
+
+            // Add matching owner options
+            for (let option of originalOptions) {
+                if (option.value !== '' && option.text.toLowerCase().includes(searchTerm)) {
+                    const newOption = new Option(option.text, option.value);
+                    select.add(newOption);
+                }
+            }
+        });
+    </script>
+</body>
+</html>

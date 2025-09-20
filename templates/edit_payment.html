@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تعديل الدفعة - شركة كثيب للاستثمار</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://www.fontstatic.com/f=jazeera,jazeera-light" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='custom.css') }}">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('dashboard') }}">
+                <img src="{{ url_for('static', filename='logo.svg') }}" alt="شركة كثيب للاستثمار" height="40">
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="{{ url_for('dashboard') }}">الرئيسية</a>
+                <a class="nav-link" href="{{ url_for('owners_view') }}">الملاك</a>
+                <a class="nav-link" href="{{ url_for('tenants_view') }}">المستأجرين</a>
+                <a class="nav-link" href="{{ url_for('projects_view') }}">المشاريع</a>
+                <a class="nav-link" href="{{ url_for('payments_view') }}">الدفعات</a>
+                <a class="nav-link" href="{{ url_for('reports_view') }}">التقارير</a>
+                <a class="nav-link" href="{{ url_for('logout') }}">خروج</a>
+            </div>
+        </div>
+    </nav>
+    <div class="container mt-4">
+        <h1>تعديل الدفعة</h1>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>بيانات الدفعة</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST">
+                            <div class="mb-3">
+                                <label for="unit_id" class="form-label">الوحدة</label>
+                                <select class="form-control" id="unit_id" name="unit_id" required>
+                                    {% for unit in units %}
+                                    <option value="{{ unit.id }}" {% if unit.id == payment.unit_id %}selected{% endif %}>{{ unit.unit_number }} ({{ unit.project.name if unit.project else '' }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="payer_type" class="form-label">نوع الدافع</label>
+                                <select class="form-control" id="payer_type" name="payer_type" required>
+                                    <option value="owner" {% if payment.payer_type == 'owner' %}selected{% endif %}>مالك</option>
+                                    <option value="tenant" {% if payment.payer_type == 'tenant' %}selected{% endif %}>مستأجر</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="payer_id" class="form-label">معرف الدافع</label>
+                                <select class="form-control" id="payer_id" name="payer_id" required
+                                        data-owners='{{ owners|tojson }}'
+                                        data-tenants='{{ tenants|tojson }}'
+                                        data-current-payer-type='{{ payment.payer_type }}'
+                                        data-current-payer-id='{{ payment.payer_id }}'>
+                                    <option value="">اختر الدافع</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="amount" class="form-label">المبلغ</label>
+                                <input type="number" step="0.01" class="form-control" id="amount" name="amount" value="{{ payment.amount }}" required min="0.01">
+                            </div>
+                            <div class="mb-3">
+                                <label for="payment_date" class="form-label">تاريخ الدفعة</label>
+                                <input type="date" class="form-control" id="payment_date" name="payment_date" value="{{ payment.date.strftime('%Y-%m-%d') if payment.date else '' }}">
+                            </div>
+                            <div class="mb-3">
+                                <label for="company_rate" class="form-label">نسبة الشركة</label>
+                                <input type="number" step="0.01" class="form-control" id="company_rate" name="company_rate" value="{{ payment.company_rate }}" min="0" max="1">
+                            </div>
+                            <div class="mb-3">
+                                <label for="vat_rate" class="form-label">معدل ضريبة القيمة المضافة</label>
+                                <input type="number" step="0.01" class="form-control" id="vat_rate" name="vat_rate" value="{{ payment.vat_rate }}" min="0" max="1">
+                            </div>
+                            <div class="mb-3">
+                                <label for="description" class="form-label">الوصف</label>
+                                <textarea class="form-control" id="description" name="description" maxlength="255">{{ payment.description or '' }}</textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary">تحديث الدفعة</button>
+                            <a href="{{ url_for('payments_view') }}" class="btn btn-secondary">إلغاء</a>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Populate payers based on type
+        document.getElementById('payer_type').addEventListener('change', function() {
+            const payerType = this.value;
+            const payerSelect = document.getElementById('payer_id');
+            const ownersData = JSON.parse(payerSelect.getAttribute('data-owners') || '[]');
+            const tenantsData = JSON.parse(payerSelect.getAttribute('data-tenants') || '[]');
+            const currentPayerType = payerSelect.getAttribute('data-current-payer-type');
+            const currentPayerId = payerSelect.getAttribute('data-current-payer-id');
+
+            payerSelect.innerHTML = '<option value="">اختر الدافع</option>';
+
+            if (payerType === 'owner') {
+                ownersData.forEach(function(owner) {
+                    const option = document.createElement('option');
+                    option.value = owner.id;
+                    option.textContent = owner.name + ' (' + owner.national_id + ')';
+                    if (currentPayerType === 'owner' && owner.id == currentPayerId) {
+                        option.selected = true;
+                    }
+                    payerSelect.appendChild(option);
+                });
+            } else if (payerType === 'tenant') {
+                tenantsData.forEach(function(tenant) {
+                    const option = document.createElement('option');
+                    option.value = tenant.id;
+                    option.textContent = tenant.name;
+                    if (currentPayerType === 'tenant' && tenant.id == currentPayerId) {
+                        option.selected = true;
+                    }
+                    payerSelect.appendChild(option);
+                });
+            }
+        });
+
+        // Trigger change on load to populate
+        document.getElementById('payer_type').dispatchEvent(new Event('change'));
+    </script>
+</body>
+</html>

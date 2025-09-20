@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة التحكم - شركة كثيب للاستثمار</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://www.fontstatic.com/f=jazeera,jazeera-light" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='custom.css') }}">
+    <style>
+        .welcome-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 15px;
+        }
+        .kpi-card {
+            border: none;
+            border-radius: 15px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .kpi-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .kpi-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 100px;
+            height: 100px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+            transform: translate(30px, -30px);
+        }
+        .chart-container {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .quick-actions {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+        }
+        .quick-actions:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(245,87,108,0.3);
+        }
+        .activity-item {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-left: 4px solid #007bff;
+            transition: all 0.3s ease;
+        }
+        .activity-item:hover {
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            transform: translateX(-5px);
+        }
+        .achievement-item {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+        }
+        .achievement-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+        }
+        .achievement-icon {
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+        .progress {
+            border-radius: 10px;
+            overflow: hidden;
+            background-color: #e9ecef;
+        }
+        .progress-bar {
+            transition: width 1.5s ease-in-out;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .progress-circle {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            margin: 0 auto 10px;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        .fade-in {
+            animation: fadeIn 0.8s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .slide-in-left {
+            animation: slideInLeft 0.6s ease-out;
+        }
+        @keyframes slideInLeft {
+            from { opacity: 0; transform: translateX(-30px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        .slide-in-right {
+            animation: slideInRight 0.6s ease-out;
+        }
+        @keyframes slideInRight {
+            from { opacity: 0; transform: translateX(30px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        @media (max-width: 768px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            .welcome-card .col-md-8, .welcome-card .col-md-4 {
+                text-align: center;
+                margin-bottom: 20px;
+            }
+            .quick-actions {
+                font-size: 0.9rem;
+                padding: 12px;
+            }
+            .quick-actions i {
+                font-size: 1.5rem;
+            }
+            .progress-circle {
+                width: 50px;
+                height: 50px;
+                font-size: 0.8rem;
+            }
+            .chart-container {
+                padding: 15px;
+            }
+            .activity-item, .achievement-item {
+                padding: 12px;
+            }
+        }
+        @media (max-width: 576px) {
+            .container-fluid {
+                padding-left: 10px;
+                padding-right: 10px;
+            }
+            .navbar-nav {
+                text-align: center;
+            }
+            .navbar-nav .nav-link {
+                padding: 0.5rem;
+                font-size: 0.9rem;
+            }
+            .kpi-card h3 {
+                font-size: 1.5rem;
+            }
+            .kpi-card h5 {
+                font-size: 1rem;
+            }
+        }
+        @media print {
+            .navbar, .quick-actions, .activity-item, .achievement-item {
+                display: none !important;
+            }
+            .container-fluid {
+                margin-top: 0;
+            }
+            .card {
+                box-shadow: none !important;
+                border: 1px solid #ddd !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('dashboard') }}">
+                <img src="{{ url_for('static', filename='logo.svg') }}" alt="شركة كثيب للاستثمار" height="40">
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <div class="navbar-nav ms-auto">
+                    <a class="nav-link{% if active_page == 'dashboard' %} active{% endif %}" href="{{ url_for('dashboard') }}"><i class="fas fa-home"></i> الرئيسية</a>
+                    <a class="nav-link{% if active_page == 'owners' %} active{% endif %}" href="{{ url_for('owners_view') }}"><i class="fas fa-users"></i> الملاك</a>
+                    <a class="nav-link{% if active_page == 'tenants' %} active{% endif %}" href="{{ url_for('tenants_view') }}"><i class="fas fa-building"></i> المستأجرين</a>
+                    <a class="nav-link{% if active_page == 'projects' %} active{% endif %}" href="{{ url_for('projects_view') }}"><i class="fas fa-project-diagram"></i> المشاريع</a>
+                    <a class="nav-link{% if active_page == 'payments' %} active{% endif %}" href="{{ url_for('payments_view') }}"><i class="fas fa-money-bill-wave"></i> الدفعات</a>
+                    <a class="nav-link{% if active_page == 'reports' %} active{% endif %}" href="{{ url_for('reports_view') }}"><i class="fas fa-chart-bar"></i> التقارير</a>
+                    <a class="nav-link d-none d-lg-inline" href="#" onclick="window.print()" data-bs-toggle="tooltip" data-bs-placement="bottom" title="طباعة لوحة التحكم"><i class="fas fa-print"></i> طباعة</a>
+                    <a class="nav-link" href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> خروج</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Particle Background -->
+    <div class="particles-container" id="particles-container"></div>
+
+    <!-- Floating Elements -->
+    <div class="floating-elements">
+        <div class="floating-element parallax-element" style="top: 10%; left: 10%; animation-delay: 0s;">
+            <div class="floating-shape shape-circle"></div>
+        </div>
+        <div class="floating-element parallax-element" style="top: 20%; right: 15%; animation-delay: 2s;">
+            <div class="floating-shape shape-triangle"></div>
+        </div>
+        <div class="floating-element parallax-element" style="bottom: 30%; left: 20%; animation-delay: 4s;">
+            <div class="floating-shape shape-square"></div>
+        </div>
+        <div class="floating-element parallax-element" style="top: 60%; right: 10%; animation-delay: 1s;">
+            <div class="floating-shape shape-hexagon"></div>
+        </div>
+        <div class="floating-element parallax-element" style="bottom: 20%; right: 25%; animation-delay: 3s;">
+            <div class="floating-shape shape-diamond"></div>
+        </div>
+    </div>
+
+    <div class="container-fluid mt-4">
+        <!-- Welcome Section -->
+        <div class="row mb-4 fade-in">
+            <div class="col-12">
+                <div class="card welcome-card scroll-fade-in">
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <div class="col-md-8">
+                                <h2 class="card-title mb-2"><i class="fas fa-chart-line animate-morph"></i> مرحباً بك في لوحة التحكم</h2>
+                                <p class="card-text">مراقبة شاملة لأنشطة شركة كثيب للاستثمار وإدارة العمليات اليومية</p>
+                                <p class="mb-0"><i class="fas fa-calendar-alt animate-float"></i> <span id="current-date"></span></p>
+                            </div>
+                            <div class="col-md-4 text-center">
+                                <i class="fas fa-building fa-4x opacity-75 animate-icon-bounce icon-hover-glow"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <h4 class="mb-3"><i class="fas fa-bolt"></i> الإجراءات السريعة</h4>
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('owners_view') }}" class="btn quick-actions w-100 hover-3d" data-bs-toggle="tooltip" data-bs-placement="bottom" title="إضافة مالك جديد للنظام">
+                            <i class="fas fa-user-plus fa-2x d-block mb-2 animate-icon-pulse"></i>
+                            إضافة مالك جديد
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('tenants_view') }}" class="btn quick-actions w-100 hover-tilt" data-bs-toggle="tooltip" data-bs-placement="bottom" title="إضافة مستأجر جديد للنظام">
+                            <i class="fas fa-handshake fa-2x d-block mb-2 animate-icon-bounce"></i>
+                            إضافة مستأجر جديد
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('projects_view') }}" class="btn quick-actions w-100 hover-bounce-gentle" data-bs-toggle="tooltip" data-bs-placement="bottom" title="إنشاء مشروع استثماري جديد">
+                            <i class="fas fa-plus-circle fa-2x d-block mb-2 animate-icon-rotate"></i>
+                            مشروع جديد
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('payments_view') }}" class="btn quick-actions w-100 hover-pulse-scale" data-bs-toggle="tooltip" data-bs-placement="bottom" title="تسجيل دفعة مالية جديدة">
+                            <i class="fas fa-credit-card fa-2x d-block mb-2 animate-icon-flip"></i>
+                            تسجيل دفعة
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="stats-grid">
+            <div class="card kpi-card bg-primary text-white scroll-scale-in stagger-1" data-bs-toggle="tooltip" data-bs-placement="top" title="إجمالي جميع الدفعات المدفوعة في النظام">
+                <div class="card-body text-center">
+                    <i class="fas fa-money-bill-wave fa-3x mb-3 icon-hover-bounce"></i>
+                    <h5 class="card-title">إجمالي الدفعات</h5>
+                    <h3 class="card-text animate-counter">{{ "%.0f"|format(total_payments) }} ريال</h3>
+                    <small>إجمالي المبالغ المدفوعة</small>
+                </div>
+            </div>
+            <div class="card kpi-card bg-success text-white scroll-scale-in stagger-2" data-bs-toggle="tooltip" data-bs-placement="top" title="إجمالي العمولات المكتسبة من جميع العمليات">
+                <div class="card-body text-center">
+                    <i class="fas fa-percentage fa-3x mb-3 icon-hover-rotate"></i>
+                    <h5 class="card-title">إجمالي العمولات</h5>
+                    <h3 class="card-text animate-counter">{{ "%.0f"|format(total_commissions) }} ريال</h3>
+                    <small>إيرادات الشركة</small>
+                </div>
+            </div>
+            <div class="card kpi-card bg-warning text-white scroll-scale-in stagger-3" data-bs-toggle="tooltip" data-bs-placement="top" title="إجمالي ضريبة القيمة المضافة المحتسبة">
+                <div class="card-body text-center">
+                    <i class="fas fa-calculator fa-3x mb-3 icon-hover-pulse"></i>
+                    <h5 class="card-title">ضريبة القيمة المضافة</h5>
+                    <h3 class="card-text animate-counter">{{ "%.0f"|format(total_vat) }} ريال</h3>
+                    <small>المبلغ المحتسب</small>
+                </div>
+            </div>
+            <div class="card kpi-card bg-info text-white scroll-scale-in stagger-4" data-bs-toggle="tooltip" data-bs-placement="top" title="صافي المبلغ المدفوع للملاك بعد خصم العمولات والضرائب">
+                <div class="card-body text-center">
+                    <i class="fas fa-wallet fa-3x mb-3 icon-hover-flip"></i>
+                    <h5 class="card-title">صافي للملاك</h5>
+                    <h3 class="card-text animate-counter">{{ "%.0f"|format(net_paid_to_owners) }} ريال</h3>
+                    <small>بعد خصم العمولات والضرائب</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics Cards with Progress -->
+        <div class="row mb-4">
+            <div class="col-md-2">
+                <div class="card kpi-card bg-secondary text-white scroll-slide-left stagger-1" data-bs-toggle="tooltip" data-bs-placement="top" title="إجمالي عدد الملاك المسجلين في النظام">
+                    <div class="card-body text-center">
+                        <div class="progress-circle bg-secondary animate-pulse-glow">{{ total_owners }}</div>
+                        <h6>الملاك</h6>
+                        <small>مالك مسجل</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="card kpi-card bg-dark text-white scroll-slide-left stagger-2" data-bs-toggle="tooltip" data-bs-placement="top" title="إجمالي عدد المستأجرين النشطين">
+                    <div class="card-body text-center">
+                        <div class="progress-circle bg-dark animate-pulse-glow">{{ total_tenants }}</div>
+                        <h6>المستأجرين</h6>
+                        <small>مستأجر نشط</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="card kpi-card bg-primary text-white scroll-slide-left stagger-3" data-bs-toggle="tooltip" data-bs-placement="top" title="إجمالي عدد المشاريع قيد التنفيذ">
+                    <div class="card-body text-center">
+                        <div class="progress-circle bg-primary animate-pulse-glow">{{ total_projects }}</div>
+                        <h6>المشاريع</h6>
+                        <small>مشروع قيد التنفيذ</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="card kpi-card bg-success text-white scroll-slide-right stagger-1" data-bs-toggle="tooltip" data-bs-placement="top" title="إجمالي عدد الوحدات المسجلة في جميع المشاريع">
+                    <div class="card-body text-center">
+                        <div class="progress-circle bg-success animate-pulse-glow">{{ total_units }}</div>
+                        <h6>إجمالي الوحدات</h6>
+                        <small>وحدة مسجلة</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="card kpi-card bg-warning text-white scroll-slide-right stagger-2" data-bs-toggle="tooltip" data-bs-placement="top" title="عدد الوحدات المتاحة للإيجار">
+                    <div class="card-body text-center">
+                        <div class="progress-circle bg-warning animate-pulse-glow">{{ available_units }}</div>
+                        <h6>متاحة</h6>
+                        <small>وحدة فارغة</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="card kpi-card bg-info text-white scroll-slide-right stagger-3" data-bs-toggle="tooltip" data-bs-placement="top" title="عدد الوحدات المؤجرة حالياً">
+                    <div class="card-body text-center">
+                        <div class="progress-circle bg-info animate-pulse-glow">{{ rented_units }}</div>
+                        <h6>مؤجرة</h6>
+                        <small>وحدة مشغولة</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Occupancy Progress Section -->
+        <div class="row mb-4">
+            <div class="col-md-6 slide-in-left">
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0"><i class="fas fa-info-circle"></i> معدل الإشغال</h5>
+                    </div>
+                    <div class="card-body">
+                        {% set occupancy_rate = (rented_units / total_units * 100) if total_units > 0 else 0 %}
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between">
+                                <span>نسبة الإشغال الحالية</span>
+                                <span class="fw-bold">{{ "%.1f"|format(occupancy_rate) }}%</span>
+                            </div>
+                            <div class="progress" style="height: 20px;">
+                                <div class="progress-bar bg-success occupancy-progress" role="progressbar"
+                                     aria-valuenow="{{ occupancy_rate }}"
+                                     aria-valuemin="0" aria-valuemax="100"
+                                     data-width="{{ occupancy_rate }}">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <p class="text-center">من إجمالي {{ total_units }} وحدة، {{ rented_units }} وحدة مؤجرة و {{ available_units }} وحدة متاحة.</p>
+                            <p class="text-center">هذا يمثل نسبة إشغال قدرها {{ "%.1f"|format(occupancy_rate) }}%.</p>
+                        </div>
+                        <div class="row text-center">
+                            <div class="col-6">
+                                <div class="border-end">
+                                    <h4 class="text-success">{{ rented_units }}</h4>
+                                    <small class="text-muted">مؤجرة</small>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <h4 class="text-warning">{{ available_units }}</h4>
+                                <small class="text-muted">متاحة</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 slide-in-right">
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0"><i class="fas fa-trophy"></i> إنجازات اليوم</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="achievement-item mb-3">
+                            <div class="d-flex align-items-center">
+                                <div class="achievement-icon bg-primary text-white rounded-circle me-3">
+                                    <i class="fas fa-money-bill-wave"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-1">إجمالي الإيرادات</h6>
+                                    <p class="mb-0 text-success fw-bold">{{ "%.0f"|format(total_payments) }} ريال</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="achievement-item mb-3">
+                            <div class="d-flex align-items-center">
+                                <div class="achievement-icon bg-success text-white rounded-circle me-3">
+                                    <i class="fas fa-percentage"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-1">إجمالي العمولات</h6>
+                                    <p class="mb-0 text-success fw-bold">{{ "%.0f"|format(total_commissions) }} ريال</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="achievement-item">
+                            <div class="d-flex align-items-center">
+                                <div class="achievement-icon bg-info text-white rounded-circle me-3">
+                                    <i class="fas fa-users"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-1">إجمالي العملاء</h6>
+                                    <p class="mb-0 text-primary fw-bold">{{ total_owners + total_tenants }} عميل</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- Recent Activities and Payments -->
+        <div class="row">
+            <div class="col-md-6">
+                <div class="chart-container">
+                    <h5 class="mb-3"><i class="fas fa-history"></i> الدفعات الأخيرة</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th><i class="fas fa-home"></i> الوحدة</th>
+                                    <th><i class="fas fa-user"></i> النوع</th>
+                                    <th><i class="fas fa-money-bill"></i> المبلغ</th>
+                                    <th><i class="fas fa-calendar"></i> التاريخ</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for payment in recent_payments %}
+                                <tr>
+                                    <td>{{ payment.unit_id }}</td>
+                                    <td>
+                                        {% if payment.payer_type == 'owner' %}
+                                            <span class="badge bg-primary">مالك</span>
+                                        {% else %}
+                                            <span class="badge bg-success">مستأجر</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-success fw-bold">{{ "%.0f"|format(payment.amount) }} ريال</td>
+                                    <td>{{ payment.date.strftime('%Y-%m-%d') }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="chart-container">
+                    <h5 class="mb-3"><i class="fas fa-activity"></i> الأنشطة الأخيرة</h5>
+                    <div class="activity-list">
+                        {% for log in recent_audit_logs %}
+                        <div class="activity-item">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <strong>{{ log.action }}</strong>
+                                    <br>
+                                    <small class="text-muted">
+                                        <i class="fas fa-user"></i> {{ log.user }} •
+                                        <i class="fas fa-clock"></i> {{ log.timestamp.strftime('%Y-%m-%d %H:%M') }}
+                                    </small>
+                                </div>
+                                <i class="fas fa-check-circle text-success"></i>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notifications and Alerts -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="mb-0"><i class="fas fa-bell"></i> تنبيهات وإشعارات</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info" role="alert">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>معلومة:</strong> يمكنك الآن عرض جميع التقارير التفصيلية من قسم التقارير
+                        </div>
+                        {% if available_units > total_units * 0.7 %}
+                        <div class="alert alert-warning" role="alert">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <strong>تنبيه:</strong> معدل الإشغال مرتفع! {{ available_units }} وحدة متاحة فقط
+                        </div>
+                        {% endif %}
+                        {% if total_payments == 0 %}
+                        <div class="alert alert-success" role="alert">
+                            <i class="fas fa-check-circle"></i>
+                            <strong>تهانينا:</strong> ابدأ بإضافة أول دفعة لك!
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Overview Lists -->
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="fas fa-project-diagram"></i> المشاريع الأخيرة</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="list-group list-group-flush">
+                            {% for project in projects[:5] %}
+                            <a href="{{ url_for('projects_view') }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                                <div>
+                                    <i class="fas fa-building me-2 text-primary"></i>
+                                    <strong>{{ project.name }}</strong>
+                                </div>
+                                <span class="badge bg-primary rounded-pill">{{ project.location }}</span>
+                            </a>
+                            {% endfor %}
+                            {% if projects|length == 0 %}
+                            <div class="text-center text-muted py-3">
+                                <i class="fas fa-plus-circle fa-2x mb-2"></i>
+                                <br>لا توجد مشاريع
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0"><i class="fas fa-users"></i> الملاك النشطين</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="list-group list-group-flush">
+                            {% for owner in owners[:5] %}
+                            <a href="{{ url_for('owners_view') }}" class="list-group-item list-group-item-action">
+                                <i class="fas fa-user-circle me-2 text-success"></i>
+                                <strong>{{ owner.name }}</strong>
+                                <br>
+                                <small class="text-muted">{{ owner.sab_number or 'بدون رقم ساب' }}</small>
+                            </a>
+                            {% endfor %}
+                            {% if owners|length == 0 %}
+                            <div class="text-center text-muted py-3">
+                                <i class="fas fa-user-plus fa-2x mb-2"></i>
+                                <br>لا يوجد ملاك
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0"><i class="fas fa-building"></i> المستأجرين النشطين</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="list-group list-group-flush">
+                            {% for tenant in tenants[:5] %}
+                            <a href="{{ url_for('tenants_view') }}" class="list-group-item list-group-item-action">
+                                <i class="fas fa-handshake me-2 text-info"></i>
+                                <strong>{{ tenant.name }}</strong>
+                                <br>
+                                <small class="text-muted">{{ tenant.sab_number or 'بدون رقم ساب' }}</small>
+                            </a>
+                            {% endfor %}
+                            {% if tenants|length == 0 %}
+                            <div class="text-center text-muted py-3">
+                                <i class="fas fa-handshake fa-2x mb-2"></i>
+                                <br>لا يوجد مستأجرين
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="chart-data" style="display:none;" data-rented-units="{{ rented_units }}" data-available-units="{{ available_units }}" data-total-payments="{{ total_payments }}" data-total-commissions="{{ total_commissions }}" data-total-vat="{{ total_vat }}" data-net-paid-to-owners="{{ net_paid_to_owners }}"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Add interactive features
+        document.addEventListener('DOMContentLoaded', function() {
+            // Parse chart data
+            const dataEl = document.getElementById('chart-data');
+            const chartData = {
+                rentedUnits: parseFloat(dataEl.dataset.rentedUnits) || 0,
+                availableUnits: parseFloat(dataEl.dataset.availableUnits) || 0,
+                totalPayments: parseFloat(dataEl.dataset.totalPayments) || 0,
+                totalCommissions: parseFloat(dataEl.dataset.totalCommissions) || 0,
+                totalVat: parseFloat(dataEl.dataset.totalVat) || 0,
+                netPaidToOwners: parseFloat(dataEl.dataset.netPaidToOwners) || 0
+            };
+
+            // Set current date
+            const currentDateElement = document.getElementById('current-date');
+            const today = new Date();
+            const options = { year: 'numeric', month: '2-digit', day: '2-digit' };
+            currentDateElement.textContent = today.toLocaleDateString('ar-SA', options);
+            // Add hover effects to cards
+            const cards = document.querySelectorAll('.kpi-card');
+            cards.forEach(card => {
+                card.addEventListener('mouseenter', function() {
+                    this.style.transform = 'translateY(-10px) scale(1.02)';
+                });
+                card.addEventListener('mouseleave', function() {
+                    this.style.transform = 'translateY(0) scale(1)';
+                });
+            });
+
+            // Add click effects to quick action buttons
+            const quickActions = document.querySelectorAll('.quick-actions');
+            quickActions.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    this.style.transform = 'scale(0.95)';
+                    setTimeout(() => {
+                        this.style.transform = 'scale(1)';
+                    }, 150);
+                });
+            });
+
+            // Set progress bar width dynamically
+            const occupancyProgress = document.querySelector('.occupancy-progress');
+            if (occupancyProgress) {
+                const width = occupancyProgress.getAttribute('data-width');
+                occupancyProgress.style.width = width + '%';
+            }
+
+            // Add smooth animations for activity items
+            const activityItems = document.querySelectorAll('.activity-item');
+            activityItems.forEach((item, index) => {
+                item.style.opacity = '0';
+                item.style.transform = 'translateX(-20px)';
+                setTimeout(() => {
+                    item.style.transition = 'all 0.5s ease';
+                    item.style.opacity = '1';
+                    item.style.transform = 'translateX(0)';
+                }, index * 100);
+            });
+
+            // Add achievement animations
+            const achievementItems = document.querySelectorAll('.achievement-item');
+            achievementItems.forEach((item, index) => {
+                item.style.opacity = '0';
+                item.style.transform = 'translateY(20px)';
+                setTimeout(() => {
+                    item.style.transition = 'all 0.6s ease';
+                    item.style.opacity = '1';
+                    item.style.transform = 'translateY(0)';
+                }, index * 150);
+            });
+
+            // Initialize tooltips
+            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+
+
+            // Scroll-triggered animations
+            function handleScrollAnimations() {
+                const elements = document.querySelectorAll('.scroll-fade-in, .scroll-slide-left, .scroll-slide-right, .scroll-scale-in');
+
+                elements.forEach(element => {
+                    const elementTop = element.getBoundingClientRect().top;
+                    const elementBottom = element.getBoundingClientRect().bottom;
+                    const windowHeight = window.innerHeight;
+
+                    // Trigger animation when element is in viewport
+                    if (elementTop < windowHeight * 0.8 && elementBottom > 0) {
+                        element.classList.add('in-view');
+                    }
+                });
+            }
+
+            // Throttle scroll events for better performance
+            let scrollTimeout;
+            function throttledScrollHandler() {
+                if (!scrollTimeout) {
+                    scrollTimeout = setTimeout(() => {
+                        handleScrollAnimations();
+                        scrollTimeout = null;
+                    }, 16); // ~60fps
+                }
+            }
+
+            // Initial check for elements already in viewport
+            handleScrollAnimations();
+
+            // Add scroll event listener
+            window.addEventListener('scroll', throttledScrollHandler);
+
+            // Intersection Observer for better performance (fallback)
+            if ('IntersectionObserver' in window) {
+                const observerOptions = {
+                    threshold: 0.1,
+                    rootMargin: '0px 0px -50px 0px'
+                };
+
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('in-view');
+                        }
+                    });
+                }, observerOptions);
+
+                // Observe all scroll animation elements
+                document.querySelectorAll('.scroll-fade-in, .scroll-slide-left, .scroll-slide-right, .scroll-scale-in').forEach(el => {
+                    observer.observe(el);
+                });
+            }
+
+            // Animated counters
+            function animateCounters() {
+                const counters = document.querySelectorAll('.animate-counter');
+                counters.forEach(counter => {
+                    const target = parseFloat(counter.textContent.replace(/[^\d.-]/g, ''));
+                    if (!isNaN(target)) {
+                        animateNumber(counter, 0, target, 2000);
+                    }
+                });
+            }
+
+            function animateNumber(element, start, end, duration) {
+                const startTime = performance.now();
+                const endTime = startTime + duration;
+
+                function update(currentTime) {
+                    if (currentTime < endTime) {
+                        const progress = (currentTime - startTime) / duration;
+                        const easeProgress = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+                        const current = Math.floor(start + (end - start) * easeProgress);
+                        element.textContent = current.toLocaleString() + ' ريال';
+                        requestAnimationFrame(update);
+                    } else {
+                        element.textContent = end.toLocaleString() + ' ريال';
+                    }
+                }
+
+                requestAnimationFrame(update);
+            }
+
+            // Trigger counter animations when they come into view
+            const counterObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        animateCounters();
+                        counterObserver.disconnect(); // Only animate once
+                    }
+                });
+            });
+
+            document.querySelectorAll('.animate-counter').forEach(counter => {
+                counterObserver.observe(counter);
+            });
+
+            // Particle background effect
+            function createParticles() {
+                const particlesContainer = document.getElementById('particles-container');
+                const particleCount = 50; // Adjust number of particles
+
+                for (let i = 0; i < particleCount; i++) {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+
+                    // Random position
+                    particle.style.left = Math.random() * 100 + '%';
+                    particle.style.top = Math.random() * 100 + '%';
+
+                    // Random animation delay
+                    particle.style.animationDelay = Math.random() * 20 + 's';
+
+                    // Random size variation
+                    const size = Math.random() * 4 + 2; // 2-6px
+                    particle.style.width = size + 'px';
+                    particle.style.height = size + 'px';
+
+                    particlesContainer.appendChild(particle);
+                }
+            }
+
+            // Create particles on page load
+            createParticles();
+
+            // Recreate particles on window resize
+            window.addEventListener('resize', () => {
+                const particlesContainer = document.getElementById('particles-container');
+                particlesContainer.innerHTML = '';
+                createParticles();
+            });
+        });
+    </script>
+</body>
+</html>
