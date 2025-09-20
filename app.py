@@ -8,10 +8,13 @@
 
 from flask import Flask, render_template, request, redirect, url_for, flash, send_file
 from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from datetime import datetime
 import csv, io, json, os
 from openpyxl import Workbook
 from werkzeug.utils import secure_filename
+from werkzeug.security import generate_password_hash, check_password_hash
+from pymongo import MongoClient
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'dev-secret-key'  # للتجربة فقط - غيّر في الإنتاج
@@ -20,7 +23,30 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'uploads/contracts'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
+# MongoDB Configuration
+MONGODB_URL = os.environ.get('MONGODB_URL', 'mongodb://mongo:VYSbWesTVJRvIeDMyGHgmNkZONaAiJXb@mongodb.railway.internal:27017')
+try:
+    mongo_client = MongoClient(MONGODB_URL, serverSelectionTimeoutMS=5000)
+    mongo_client.admin.command('ping')  # Test connection
+    mongo_db = mongo_client['kthaib_db']
+    print("MongoDB connected successfully")
+except Exception as e:
+    print(f"MongoDB connection failed: {e}")
+    mongo_client = None
+    mongo_db = None
+
 db = SQLAlchemy(app)
+
+# Flask-Login setup
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+login_manager.login_message = 'يرجى تسجيل الدخول للوصول إلى هذه الصفحة.'
+login_manager.login_message_category = 'info'
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
 
 # -------------------------
 # نماذج البيانات (Models)
@@ -34,6 +60,22 @@ class Owner(db.Model):
     address = db.Column(db.String(255))
     sab_number = db.Column(db.String(50))  # رقم الساب
     tenants = db.relationship('Tenant', backref='owner', lazy=True)
+
+# MongoDB Collections
+if mongo_db is not None:
+    owners_collection = mongo_db['owners']
+    tenants_collection = mongo_db['tenants']
+    projects_collection = mongo_db['projects']
+    units_collection = mongo_db['units']
+    payments_collection = mongo_db['payments']
+    audit_logs_collection = mongo_db['audit_logs']
+else:
+    owners_collection = None
+    tenants_collection = None
+    projects_collection = None
+    units_collection = None
+    payments_collection = None
+    audit_logs_collection = None
 
 class Tenant(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -83,6 +125,22 @@ class AuditLog(db.Model):
     action = db.Column(db.String(255))
     user = db.Column(db.String(80))
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+class User(UserMixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password_hash = db.Column(db.String(128), nullable=False)
+    role = db.Column(db.String(20), nullable=False)  # Admin, Accountant, Clerk
+    name = db.Column(db.String(120))
+    email = db.Column(db.String(120))
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
 
 # -------------------------
 # وظائف مساعدة
@@ -346,6 +404,7 @@ def generate_comprehensive_report(start_date=None, end_date=None, project_id=Non
 
 def seed_sample_data():
     """ملئ بيانات تجريبية إذا كانت الجداول فارغة"""
+    # SQLite seeding
     if Owner.query.count() == 0:
         owners = [
             Owner(name="محمود العسيري", national_id="1010101010", phone="0500000001", email="ma@kthaib.com", address="الرياض", sab_number="ساب-001"),
@@ -401,7 +460,37 @@ def seed_sample_data():
             payments.append(pay)
         db.session.add_all(payments)
 
+    # Seed users
+    if User.query.count() == 0:
+        users = [
+            User(username='admin', name='مدير النظام', email='admin@kthaib.com', role='Admin'),
+            User(username='accountant', name='المحاسب', email='acc@kthaib.com', role='Accountant'),
+            User(username='clerk', name='موظف الاستقبال', email='clerk@kthaib.com', role='Clerk'),
+            User(username='manager', name='مدير المشاريع', email='manager@kthaib.com', role='Manager')
+        ]
+        for user in users:
+            user.set_password(user.username)  # كلمة المرور نفس اسم المستخدم
+        db.session.add_all(users)
+
     db.session.commit()
+
+    # MongoDB seeding
+    if mongo_db is not None:
+        try:
+            if owners_collection.count_documents({}) == 0:
+                mongo_owners = [
+                    {"name": "محمود العسيري", "national_id": "1010101010", "phone": "0500000001", "email": "ma@kthaib.com", "address": "الرياض", "sab_number": "ساب-001"},
+                    {"name": "نورة الشمري", "national_id": "2020202020", "phone": "0500000002", "email": "ns@kthaib.com", "address": "جدة", "sab_number": "ساب-002"},
+                    {"name": "أحمد الخالدي", "national_id": "3030303030", "phone": "0500000003", "email": "ah@kthaib.com", "address": "الدمام", "sab_number": "ساب-003"},
+                    {"name": "فاطمة الزهراء", "national_id": "4040404040", "phone": "0500000004", "email": "fz@kthaib.com", "address": "مكة", "sab_number": "ساب-004"},
+                    {"name": "سعد المنصور", "national_id": "5050505050", "phone": "0500000005", "email": "sm@kthaib.com", "address": "المدينة", "sab_number": "ساب-005"}
+                ]
+                owners_collection.insert_many(mongo_owners)
+                print("MongoDB seeded successfully")
+        except Exception as e:
+            print(f"MongoDB seeding failed: {e}")
+    else:
+        print("MongoDB not available, skipping MongoDB seeding")
 
 # -------------------------
 # Routes رئيسية
@@ -412,38 +501,31 @@ def home():
 
 @app.route('/login', methods=['GET','POST'])
 def login():
-    # مصادقة بسيطة للتجربة؛ استبدلها بنظام حقيقي لاحقاً
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
-        # ثلاثة مستخدمين تجريبيين: admin, accountant, clerk
-        if username == 'admin' and password == 'admin':
-            # ضع اسم المستخدم في الجلسة
-            from flask import session
-            session['user'] = 'admin'
-            session['role'] = 'Admin'
-            return redirect(url_for('dashboard'))
-        elif username == 'accountant' and password == 'acc':
-            from flask import session
-            session['user'] = 'accountant'
-            session['role'] = 'Accountant'
-            return redirect(url_for('dashboard'))
-        elif username == 'clerk' and password == 'clerk':
-            from flask import session
-            session['user'] = 'clerk'
-            session['role'] = 'Clerk'
-            return redirect(url_for('dashboard'))
+
+        user = User.query.filter_by(username=username).first()
+        if user and user.check_password(password) and user.is_active:
+            login_user(user)
+            next_page = request.args.get('next')
+            return redirect(next_page) if next_page else redirect(url_for('dashboard'))
         else:
-            flash('بيانات تسجيل خاطئة (التجربة فقط).', 'danger')
+            flash('اسم المستخدم أو كلمة المرور غير صحيحة.', 'danger')
+
     return render_template('login.html')
 
 @app.route('/logout')
+@login_required
 def logout():
-    from flask import session
-    session.clear()
+    logout_user()
     return redirect(url_for('login'))
 
 @app.route('/dashboard')
+@login_required
 def dashboard():
     # مؤشرات سريعة (KPIs)
     total_payments = db.session.query(db.func.sum(Payment.amount)).scalar() or 0
@@ -481,6 +563,35 @@ def dashboard():
                            recent_audit_logs=recent_audit_logs,
                            projects=projects, owners=owners, tenants=tenants,
                            active_page='dashboard')
+
+# إدارة المستخدمين
+@app.route('/users', methods=['GET', 'POST'])
+@login_required
+def users_view():
+    if current_user.role != 'Admin':
+        flash('ليس لديك صلاحية للوصول إلى هذه الصفحة.', 'danger')
+        return redirect(url_for('dashboard'))
+
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        name = request.form.get('name')
+        email = request.form.get('email')
+        role = request.form.get('role')
+
+        if User.query.filter_by(username=username).first():
+            flash('اسم المستخدم موجود بالفعل.', 'danger')
+            return redirect(url_for('users_view'))
+
+        user = User(username=username, name=name, email=email, role=role)
+        user.set_password(password)
+        db.session.add(user)
+        db.session.commit()
+        flash('تم إضافة المستخدم بنجاح.', 'success')
+        return redirect(url_for('users_view'))
+
+    users = User.query.all()
+    return render_template('users.html', users=users, active_page='users')
 
 # إدارة الملاك
 @app.route('/owners', methods=['GET','POST'])
