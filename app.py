@@ -6,10 +6,10 @@
 ملاحظة: هذا تطبيق تعريفي - لتحويله للإنتاج ستحتاج لإضافة مصادقة قوية، صلاحيات، واختبارات.
 """
 
-from flask import Flask, render_template, request, redirect, url_for, flash, send_file
+from flask import Flask, render_template, request, redirect, url_for, flash, send_file, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
-from datetime import datetime
+from datetime import datetime, timedelta
 import csv, io, json, os
 from openpyxl import Workbook
 from werkzeug.utils import secure_filename
@@ -18,7 +18,7 @@ from pymongo import MongoClient
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'dev-secret-key'  # للتجربة فقط - غيّر في الإنتاج
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///kthaib.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///kthaib_new.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'uploads/contracts'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
@@ -48,10 +48,30 @@ login_manager.init_app(app)
 login_manager.login_view = 'login'
 login_manager.login_message = 'يرجى تسجيل الدخول للوصول إلى هذه الصفحة.'
 login_manager.login_message_category = 'info'
+login_manager.session_protection = 'strong'
+login_manager.remember_cookie_duration = timedelta(days=30)
+login_manager.remember_cookie_secure = True
+login_manager.remember_cookie_httponly = True
 
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
+
+@app.before_request
+def check_session_timeout():
+    """Check for session timeout and enforce it"""
+    if current_user.is_authenticated:
+        # Check if session has expired (2 hours of inactivity)
+        last_activity = session.get('last_activity')
+        if last_activity:
+            last_activity_time = datetime.fromisoformat(last_activity)
+            if datetime.utcnow() - last_activity_time > timedelta(hours=2):
+                logout_user()
+                flash('انتهت صلاحية الجلسة بسبب عدم النشاط. يرجى تسجيل الدخول مرة أخرى.', 'info')
+                return redirect(url_for('login'))
+
+        # Update last activity time
+        session['last_activity'] = datetime.utcnow().isoformat()
 
 # -------------------------
 # نماذج البيانات (Models)
@@ -140,12 +160,60 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(120))
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_login = db.Column(db.DateTime)
+    login_attempts = db.Column(db.Integer, default=0)
+    locked_until = db.Column(db.DateTime)
+    password_reset_token = db.Column(db.String(128))
+    password_reset_expires = db.Column(db.DateTime)
 
     def set_password(self, password):
+        # Password strength validation
+        if not self.validate_password_strength(password):
+            raise ValueError('كلمة المرور ضعيفة. يجب أن تحتوي على 8 أحرف على الأقل، حرف كبير، حرف صغير، ورقم.')
         self.password_hash = generate_password_hash(password)
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+
+    def validate_password_strength(self, password):
+        """Validate password strength requirements"""
+        if len(password) < 8:
+            return False
+        if not any(char.isupper() for char in password):
+            return False
+        if not any(char.islower() for char in password):
+            return False
+        if not any(char.isdigit() for char in password):
+            return False
+        return True
+
+    def is_account_locked(self):
+        """Check if account is currently locked"""
+        if self.locked_until and datetime.utcnow() < self.locked_until:
+            return True
+        return False
+
+    def increment_login_attempts(self):
+        """Increment login attempts and lock account if necessary"""
+        self.login_attempts += 1
+        if self.login_attempts >= 5:  # Lock after 5 failed attempts
+            self.locked_until = datetime.utcnow() + timedelta(minutes=30)  # Lock for 30 minutes
+        db.session.commit()
+
+    def reset_login_attempts(self):
+        """Reset login attempts on successful login"""
+        self.login_attempts = 0
+        self.locked_until = None
+        self.last_login = datetime.utcnow()
+        db.session.commit()
+
+    def generate_reset_token(self):
+        """Generate password reset token"""
+        import secrets
+        self.password_reset_token = secrets.token_urlsafe(32)
+        self.password_reset_expires = datetime.utcnow() + timedelta(hours=1)
+        db.session.commit()
+        return self.password_reset_token
 
 # -------------------------
 # وظائف مساعدة
@@ -474,7 +542,9 @@ def seed_sample_data():
             User(username='manager', name='مدير المشاريع', email='manager@kthaib.com', role='Manager')
         ]
         for user in users:
-            user.set_password(user.username)  # كلمة المرور نفس اسم المستخدم
+            # Use stronger default passwords
+            default_password = f"{user.username}Admin123!"  # e.g., adminAdmin123!
+            user.set_password(default_password)
         db.session.add_all(users)
 
     db.session.commit()
@@ -512,14 +582,47 @@ def login():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
+        remember = request.form.get('remember') == 'on'
 
         user = User.query.filter_by(username=username).first()
-        if user and user.check_password(password) and user.is_active:
-            login_user(user)
+
+        if not user:
+            flash('اسم المستخدم غير موجود.', 'danger')
+            return render_template('login.html')
+
+        if user.is_account_locked():
+            remaining_time = int((user.locked_until - datetime.utcnow()).total_seconds() / 60)
+            flash(f'الحساب مقفل مؤقتاً. يرجى المحاولة مرة أخرى بعد {remaining_time} دقيقة.', 'warning')
+            return render_template('login.html')
+
+        if not user.is_active:
+            flash('الحساب غير نشط. يرجى التواصل مع الإدارة.', 'danger')
+            return render_template('login.html')
+
+        if user.check_password(password):
+            # Successful login
+            user.reset_login_attempts()
+            login_user(user, remember=remember, duration=timedelta(days=30) if remember else None)
+
+            # Log successful login
+            db.session.add(AuditLog(action=f"تسجيل دخول ناجح للمستخدم {username}", user=username))
+            db.session.commit()
+
             next_page = request.args.get('next')
             return redirect(next_page) if next_page else redirect(url_for('dashboard'))
         else:
-            flash('اسم المستخدم أو كلمة المرور غير صحيحة.', 'danger')
+            # Failed login attempt
+            user.increment_login_attempts()
+
+            # Log failed login attempt
+            db.session.add(AuditLog(action=f"محاولة تسجيل دخول فاشلة للمستخدم {username}", user=username))
+            db.session.commit()
+
+            if user.login_attempts >= 5:
+                flash('تم قفل الحساب بسبب محاولات تسجيل الدخول المتكررة. يرجى المحاولة مرة أخرى بعد 30 دقيقة.', 'danger')
+            else:
+                remaining_attempts = 5 - user.login_attempts
+                flash(f'كلمة المرور غير صحيحة. لديك {remaining_attempts} محاولات متبقية.', 'danger')
 
     return render_template('login.html')
 
@@ -527,7 +630,65 @@ def login():
 @login_required
 def logout():
     logout_user()
+    flash('تم تسجيل الخروج بنجاح.', 'success')
     return redirect(url_for('login'))
+
+@app.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+
+    if request.method == 'POST':
+        email = request.form.get('email')
+        user = User.query.filter_by(email=email).first()
+
+        if user:
+            # Generate reset token
+            reset_token = user.generate_reset_token()
+            # In a real application, you would send an email here
+            # For demo purposes, we'll show the token
+            flash(f'تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني. الرمز المؤقت: {reset_token}', 'info')
+        else:
+            flash('لم يتم العثور على حساب بهذا البريد الإلكتروني.', 'warning')
+
+    return render_template('forgot_password.html')
+
+@app.route('/reset-password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+
+    user = User.query.filter_by(password_reset_token=token).first()
+
+    if not user or (user.password_reset_expires and datetime.utcnow() > user.password_reset_expires):
+        flash('رابط إعادة تعيين كلمة المرور غير صالح أو منتهي الصلاحية.', 'danger')
+        return redirect(url_for('login'))
+
+    if request.method == 'POST':
+        password = request.form.get('password')
+        confirm_password = request.form.get('confirm_password')
+
+        if password != confirm_password:
+            flash('كلمة المرور وتأكيدها غير متطابقين.', 'danger')
+            return render_template('reset_password.html', token=token)
+
+        try:
+            user.set_password(password)
+            user.password_reset_token = None
+            user.password_reset_expires = None
+            db.session.commit()
+
+            # Log password reset
+            db.session.add(AuditLog(action=f"إعادة تعيين كلمة المرور للمستخدم {user.username}", user=user.username))
+            db.session.commit()
+
+            flash('تم إعادة تعيين كلمة المرور بنجاح. يمكنك الآن تسجيل الدخول.', 'success')
+            return redirect(url_for('login'))
+        except ValueError as e:
+            flash(str(e), 'danger')
+            return render_template('reset_password.html', token=token)
+
+    return render_template('reset_password.html', token=token)
 
 @app.route('/dashboard')
 @login_required
@@ -583,20 +744,35 @@ def users_view():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
+        confirm_password = request.form.get('confirm_password')
         name = request.form.get('name')
         email = request.form.get('email')
         role = request.form.get('role')
 
+        # Validation
         if User.query.filter_by(username=username).first():
             flash('اسم المستخدم موجود بالفعل.', 'danger')
             return redirect(url_for('users_view'))
 
-        user = User(username=username, name=name, email=email, role=role)
-        user.set_password(password)
-        db.session.add(user)
-        db.session.commit()
-        flash('تم إضافة المستخدم بنجاح.', 'success')
-        return redirect(url_for('users_view'))
+        if password != confirm_password:
+            flash('كلمة المرور وتأكيدها غير متطابقين.', 'danger')
+            return redirect(url_for('users_view'))
+
+        try:
+            user = User(username=username, name=name, email=email, role=role)
+            user.set_password(password)
+            db.session.add(user)
+            db.session.commit()
+
+            # Log user creation
+            db.session.add(AuditLog(action=f"إنشاء مستخدم جديد: {username}", user=current_user.username if current_user.is_authenticated else 'system'))
+            db.session.commit()
+
+            flash('تم إضافة المستخدم بنجاح.', 'success')
+            return redirect(url_for('users_view'))
+        except ValueError as e:
+            flash(str(e), 'danger')
+            return redirect(url_for('users_view'))
 
     users = User.query.all()
     user_role = current_user.role if current_user.is_authenticated else None
@@ -1394,19 +1570,9 @@ def export_payments_text():
 # -------------------------
 if __name__ == '__main__':
     with app.app_context():
-        if not os.path.exists('kthaib.db'):
-            db.create_all()
-            seed_sample_data()
-        else:
-            # Fix existing contract file paths in database
-            tenants = Tenant.query.all()
-            for tenant in tenants:
-                if tenant.contract_file and ('\\' in tenant.contract_file or '/' in tenant.contract_file):
-                    # Extract filename from path
-                    filename = tenant.contract_file.split('\\')[-1].split('/')[-1]
-                    tenant.contract_file = filename
-                    print(f"Fixed contract file path for tenant {tenant.id}: {filename}")
-            db.session.commit()
+        # Always recreate database for development (remove this in production)
+        db.create_all()
+        seed_sample_data()
 
         # Create upload folder if it doesn't exist
         if not os.path.exists(app.config['UPLOAD_FOLDER']):

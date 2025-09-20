@@ -6,44 +6,477 @@
     <title>تسجيل الدخول - شركة كثيب للاستثمار</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://www.fontstatic.com/f=jazeera,jazeera-light" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='custom.css') }}">
+    <style>
+        .login-container {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .login-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background:
+                radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(120, 219, 226, 0.3) 0%, transparent 50%);
+            animation: float 6s ease-in-out infinite;
+        }
+
+        .login-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border: none;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            position: relative;
+            z-index: 1;
+            max-width: 450px;
+            width: 100%;
+            margin: 20px;
+        }
+
+        .login-header {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            color: white;
+            border-radius: 20px 20px 0 0 !important;
+            padding: 2rem 1.5rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .login-header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="2" fill="rgba(255,255,255,0.1)"/></svg>');
+            animation: rotate 20s linear infinite;
+        }
+
+        .login-header img {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            padding: 10px;
+            margin-bottom: 1rem;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .form-floating {
+            position: relative;
+        }
+
+        .form-floating .form-control {
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 1rem 3rem 1rem 1rem;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-floating .form-control:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+            transform: translateY(-2px);
+        }
+
+        .form-floating label {
+            padding: 1rem;
+            color: #6c757d;
+            font-weight: 500;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #6c757d;
+            cursor: pointer;
+            padding: 5px;
+            transition: color 0.3s ease;
+        }
+
+        .password-toggle:hover {
+            color: #007bff;
+        }
+
+        .btn-login {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            border: none;
+            border-radius: 10px;
+            padding: 0.75rem 2rem;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-login::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn-login:hover::before {
+            left: 100%;
+        }
+
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0,123,255,0.3);
+        }
+
+        .remember-me {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin: 1rem 0;
+        }
+
+        .remember-me input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #007bff;
+        }
+
+        .remember-me label {
+            margin: 0;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .test-users {
+            background: rgba(248, 249, 250, 0.8);
+            border-radius: 10px;
+            padding: 1rem;
+            margin-top: 1.5rem;
+            border: 1px solid #dee2e6;
+        }
+
+        .test-users h6 {
+            color: #495057;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .test-users small {
+            color: #6c757d;
+            line-height: 1.4;
+        }
+
+        .alert {
+            border-radius: 10px;
+            border: none;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .loading {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+        }
+
+        .spinner-border-sm {
+            width: 1rem;
+            height: 1rem;
+        }
+
+        @media (max-width: 576px) {
+            .login-card {
+                margin: 10px;
+                max-width: none;
+            }
+
+            .login-header {
+                padding: 1.5rem 1rem;
+            }
+
+            .login-header h3 {
+                font-size: 1.5rem;
+            }
+
+            .login-header p {
+                font-size: 0.9rem;
+            }
+
+            .form-floating .form-control {
+                font-size: 0.9rem;
+                padding: 0.875rem 2.5rem 0.875rem 0.875rem;
+            }
+
+            .form-floating label {
+                font-size: 0.85rem;
+                padding: 0.875rem;
+            }
+
+            .password-toggle {
+                right: 10px;
+                padding: 3px;
+            }
+
+            .btn-login {
+                font-size: 1rem;
+                padding: 0.625rem 1.5rem;
+            }
+
+            .test-users {
+                padding: 0.75rem;
+                font-size: 0.8rem;
+            }
+
+            .test-users small {
+                line-height: 1.3;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .login-container {
+                padding: 10px;
+            }
+
+            .login-card {
+                margin: 5px;
+            }
+
+            .login-header {
+                padding: 1.25rem 0.875rem;
+            }
+
+            .login-header h3 {
+                font-size: 1.25rem;
+            }
+
+            .card-body {
+                padding: 1rem;
+            }
+
+            .d-flex.justify-content-between {
+                flex-direction: column;
+                gap: 0.75rem;
+                align-items: flex-start !important;
+            }
+
+            .remember-me {
+                margin: 0;
+            }
+        }
+
+        @media (max-width: 360px) {
+            .login-header {
+                padding: 1rem 0.75rem;
+            }
+
+            .login-header h3 {
+                font-size: 1.1rem;
+            }
+
+            .login-header p {
+                font-size: 0.8rem;
+            }
+
+            .form-floating .form-control {
+                font-size: 0.85rem;
+                padding: 0.75rem 2rem 0.75rem 0.75rem;
+            }
+
+            .form-floating label {
+                font-size: 0.8rem;
+                padding: 0.75rem;
+            }
+
+            .btn-login {
+                font-size: 0.9rem;
+                padding: 0.5rem 1.25rem;
+            }
+
+            .test-users {
+                padding: 0.625rem;
+                font-size: 0.75rem;
+            }
+        }
+    </style>
 </head>
-<body class="bg-light">
-    <div class="container">
-        <div class="row justify-content-center mt-5">
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header text-center">
-                        <img src="{{ url_for('static', filename='logo.svg') }}" alt="شركة كثيب للاستثمار" height="50" class="mb-3">
-                        <h3>تسجيل الدخول</h3>
+<body>
+    <div class="login-container">
+        <div class="login-card card">
+            <div class="card-header login-header">
+                <img src="{{ url_for('static', filename='logo.svg') }}" alt="شركة كثيب للاستثمار">
+                <h3 class="mb-0">تسجيل الدخول</h3>
+                <p class="mb-0 mt-2 opacity-75">نظام إدارة شركة كثيب للاستثمار</p>
+            </div>
+            <div class="card-body p-4">
+                <!-- Loading Spinner -->
+                <div class="loading" id="loadingSpinner">
+                    <div class="spinner-border text-primary spinner-border-sm" role="status">
+                        <span class="visually-hidden">جاري التحميل...</span>
                     </div>
-                    <div class="card-body">
-                        {% with messages = get_flashed_messages(with_categories=true) %}
-                            {% if messages %}
-                                {% for category, message in messages %}
-                                    <div class="alert alert-{{ 'danger' if category == 'error' else category }}">{{ message }}</div>
-                                {% endfor %}
-                            {% endif %}
-                        {% endwith %}
-                        <form method="POST">
-                            <div class="mb-3">
-                                <label for="username" class="form-label">اسم المستخدم</label>
-                                <input type="text" class="form-control" id="username" name="username" required>
+                </div>
+
+                <!-- Alert Messages -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                                <i class="fas fa-{{ 'exclamation-triangle' if category == 'danger' else 'info-circle' if category == 'info' else 'check-circle' }}"></i>
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                             </div>
-                            <div class="mb-3">
-                                <label for="password" class="form-label">كلمة المرور</label>
-                                <input type="password" class="form-control" id="password" name="password" required>
-                            </div>
-                            <button type="submit" class="btn btn-primary w-100">دخول</button>
-                        </form>
-                        <div class="mt-3 text-center">
-                            <small>مستخدمين تجريبيين: admin/admin, accountant/acc, clerk/clerk</small>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <!-- Login Form -->
+                <form method="POST" id="loginForm">
+                    <div class="form-floating mb-3">
+                        <input type="text" class="form-control" id="username" name="username"
+                               placeholder="اسم المستخدم" required autocomplete="username">
+                        <label for="username">
+                            <i class="fas fa-user me-2"></i>اسم المستخدم
+                        </label>
+                    </div>
+
+                    <div class="form-floating mb-3">
+                        <input type="password" class="form-control" id="password" name="password"
+                               placeholder="كلمة المرور" required autocomplete="current-password">
+                        <label for="password">
+                            <i class="fas fa-lock me-2"></i>كلمة المرور
+                        </label>
+                        <button type="button" class="password-toggle" id="togglePassword">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="remember-me">
+                            <input type="checkbox" id="remember" name="remember">
+                            <label for="remember">
+                                <i class="fas fa-clock me-1"></i>تذكرني
+                            </label>
                         </div>
+                        <a href="{{ url_for('forgot_password') }}" class="text-decoration-none">
+                            <i class="fas fa-key me-1"></i>نسيت كلمة المرور؟
+                        </a>
                     </div>
+
+                    <button type="submit" class="btn btn-primary btn-login w-100" id="loginBtn">
+                        <i class="fas fa-sign-in-alt me-2"></i>دخول
+                    </button>
+                </form>
+
+                <!-- Test Users Info -->
+                <div class="test-users">
+                    <h6><i class="fas fa-info-circle me-2"></i>مستخدمين تجريبيين</h6>
+                    <small>
+                        <strong>مدير:</strong> admin/admin123!<br>
+                        <strong>محاسب:</strong> accountant/accountant123!<br>
+                        <strong>موظف استقبال:</strong> clerk/clerk123!<br>
+                        <strong>مدير مشاريع:</strong> manager/manager123!
+                    </small>
                 </div>
             </div>
         </div>
     </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Password visibility toggle
+        document.getElementById('togglePassword').addEventListener('click', function() {
+            const passwordInput = document.getElementById('password');
+            const icon = this.querySelector('i');
+
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        });
+
+        // Form submission with loading state
+        document.getElementById('loginForm').addEventListener('submit', function() {
+            const loginBtn = document.getElementById('loginBtn');
+            const loadingSpinner = document.getElementById('loadingSpinner');
+
+            // Show loading state
+            loginBtn.disabled = true;
+            loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>جاري تسجيل الدخول...';
+            loadingSpinner.style.display = 'block';
+
+            // Re-enable after 5 seconds (in case of error)
+            setTimeout(() => {
+                loginBtn.disabled = false;
+                loginBtn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i>دخول';
+                loadingSpinner.style.display = 'none';
+            }, 5000);
+        });
+
+        // Auto-focus username field
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('username').focus();
+        });
+
+        // Enter key support for password field
+        document.getElementById('password').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                document.getElementById('loginForm').submit();
+            }
+        });
+
+        // Animate alerts
+        document.querySelectorAll('.alert').forEach(alert => {
+            alert.style.animation = 'slideIn 0.5s ease-out';
+        });
+    </script>
 </body>
 </html>
