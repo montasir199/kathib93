@@ -24,14 +24,19 @@ app.config['UPLOAD_FOLDER'] = 'uploads/contracts'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
 # MongoDB Configuration
-MONGODB_URL = os.environ.get('MONGODB_URL', 'mongodb://mongo:VYSbWesTVJRvIeDMyGHgmNkZONaAiJXb@mongodb.railway.internal:27017')
-try:
-    mongo_client = MongoClient(MONGODB_URL, serverSelectionTimeoutMS=5000)
-    mongo_client.admin.command('ping')  # Test connection
-    mongo_db = mongo_client['kthaib_db']
-    print("MongoDB connected successfully")
-except Exception as e:
-    print(f"MongoDB connection failed: {e}")
+MONGODB_URL = os.environ.get('MONGODB_URL')
+if MONGODB_URL:
+    try:
+        mongo_client = MongoClient(MONGODB_URL, serverSelectionTimeoutMS=5000)
+        mongo_client.admin.command('ping')  # Test connection
+        mongo_db = mongo_client['kthaib_db']
+        print("MongoDB connected successfully")
+    except Exception as e:
+        print(f"MongoDB connection failed: {e}")
+        mongo_client = None
+        mongo_db = None
+else:
+    print("MONGODB_URL not set, skipping MongoDB")
     mongo_client = None
     mongo_db = None
 
@@ -548,6 +553,8 @@ def dashboard():
     owners = Owner.query.all()
     tenants = Tenant.query.all()
 
+    user_role = current_user.role if current_user.is_authenticated else None
+
     return render_template('dashboard.html',
                            total_payments=total_payments,
                            total_commissions=total_commissions,
@@ -562,6 +569,7 @@ def dashboard():
                            recent_payments=recent_payments,
                            recent_audit_logs=recent_audit_logs,
                            projects=projects, owners=owners, tenants=tenants,
+                           user_role=user_role,
                            active_page='dashboard')
 
 # إدارة المستخدمين
@@ -591,7 +599,10 @@ def users_view():
         return redirect(url_for('users_view'))
 
     users = User.query.all()
-    return render_template('users.html', users=users, active_page='users')
+    user_role = current_user.role if current_user.is_authenticated else None
+    current_user_name = current_user.name if current_user.is_authenticated else None
+    current_username = current_user.username if current_user.is_authenticated else None
+    return render_template('users.html', users=users, user_role=user_role, current_user_name=current_user_name, current_username=current_username, active_page='users')
 
 # إدارة الملاك
 @app.route('/owners', methods=['GET','POST'])
