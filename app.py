@@ -9,19 +9,49 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, send_file, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+from flask_wtf.csrf import CSRFProtect
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from datetime import datetime, timedelta
-import csv, io, json, os
+import csv, io, json, os, secrets
 from openpyxl import Workbook
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from pymongo import MongoClient
+import re
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'dev-secret-key'  # للتجربة فقط - غيّر في الإنتاج
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///kthaib_new.db'
+
+# Security Configuration
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or secrets.token_hex(32)
+app.config['WTF_CSRF_SECRET_KEY'] = os.environ.get('WTF_CSRF_SECRET_KEY') or secrets.token_hex(32)
+app.config['SESSION_COOKIE_SECURE'] = True
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=2)
+
+# Database Configuration - Railway provides DATABASE_URL
+database_url = os.environ.get('DATABASE_URL')
+if database_url:
+    # Railway provides PostgreSQL
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+else:
+    # Fallback for local development
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///kthaib_new.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# File Upload Configuration
 app.config['UPLOAD_FOLDER'] = 'uploads/contracts'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+
+# Security Headers
+app.config['SECURITY_HEADERS'] = {
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'SAMEORIGIN',
+    'X-XSS-Protection': '1; mode=block',
+    'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+    'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://fonts.googleapis.com; img-src 'self' data: https:; connect-src 'self'"
+}
 
 # MongoDB Configuration
 MONGODB_URL = os.environ.get('MONGODB_URL')
@@ -41,6 +71,16 @@ else:
     mongo_db = None
 
 db = SQLAlchemy(app)
+
+# CSRF Protection
+csrf = CSRFProtect(app)
+
+# Rate Limiting
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    default_limits=["200 per day", "50 per hour"]
+)
 
 # Flask-Login setup
 login_manager = LoginManager()
@@ -72,6 +112,52 @@ def check_session_timeout():
 
         # Update last activity time
         session['last_activity'] = datetime.utcnow().isoformat()
+
+# Security Headers
+@app.after_request
+def add_security_headers(response):
+    """Add security headers to all responses"""
+    headers = app.config.get('SECURITY_HEADERS', {})
+    for header, value in headers.items():
+        response.headers[header] = value
+    return response
+
+# HTTPS Enforcement
+@app.before_request
+def enforce_https():
+    """Enforce HTTPS in production"""
+    if not request.is_secure and not app.debug:
+        url = request.url.replace('http://', 'https://', 1)
+        return redirect(url, code=301)
+
+# Input Validation Functions
+def validate_email(email):
+    """Validate email format"""
+    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return re.match(pattern, email) is not None
+
+def validate_phone(phone):
+    """Validate Saudi phone number format"""
+    # Saudi phone numbers: 05xxxxxxxx or +9665xxxxxxxx
+    pattern = r'^(\+966|0)?5[0-9]{8}$'
+    return re.match(pattern, phone) is not None
+
+def validate_national_id(national_id):
+    """Validate Saudi National ID format"""
+    # Saudi National ID: 10 digits
+    return len(national_id) == 10 and national_id.isdigit()
+
+def sanitize_input(text):
+    """Sanitize user input to prevent XSS"""
+    if not text:
+        return text
+    # Remove potentially dangerous characters
+    return re.sub(r'[<>]', '', str(text).strip())
+
+def allowed_file(filename):
+    """Check if file extension is allowed"""
+    ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png', 'gif'}
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 # -------------------------
 # نماذج البيانات (Models)
@@ -574,15 +660,34 @@ def seed_sample_data():
 def home():
     return render_template('homepage.html')
 
+@app.route('/health')
+def health_check():
+    """Health check endpoint for Railway monitoring"""
+    return {
+        'status': 'healthy',
+        'timestamp': datetime.utcnow().isoformat(),
+        'version': '1.0.0'
+    }
+
 @app.route('/login', methods=['GET','POST'])
+@limiter.limit("5 per minute")
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
 
     if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
+        username = sanitize_input(request.form.get('username', ''))
+        password = request.form.get('password', '')
         remember = request.form.get('remember') == 'on'
+
+        # Input validation
+        if not username or len(username) < 3:
+            flash('اسم المستخدم مطلوب ويجب أن يكون 3 أحرف على الأقل.', 'danger')
+            return render_template('login.html')
+
+        if not password:
+            flash('كلمة المرور مطلوبة.', 'danger')
+            return render_template('login.html')
 
         user = User.query.filter_by(username=username).first()
 
@@ -604,8 +709,9 @@ def login():
             user.reset_login_attempts()
             login_user(user, remember=remember, duration=timedelta(days=30) if remember else None)
 
-            # Log successful login
-            db.session.add(AuditLog(action=f"تسجيل دخول ناجح للمستخدم {username}", user=username))
+            # Log successful login with IP
+            user_ip = request.remote_addr
+            db.session.add(AuditLog(action=f"تسجيل دخول ناجح للمستخدم {username} من IP: {user_ip}", user=username))
             db.session.commit()
 
             next_page = request.args.get('next')
@@ -614,8 +720,9 @@ def login():
             # Failed login attempt
             user.increment_login_attempts()
 
-            # Log failed login attempt
-            db.session.add(AuditLog(action=f"محاولة تسجيل دخول فاشلة للمستخدم {username}", user=username))
+            # Log failed login attempt with IP
+            user_ip = request.remote_addr
+            db.session.add(AuditLog(action=f"محاولة تسجيل دخول فاشلة للمستخدم {username} من IP: {user_ip}", user=username))
             db.session.commit()
 
             if user.login_attempts >= 5:
@@ -782,23 +889,57 @@ def users_view():
 
 # إدارة الملاك
 @app.route('/owners', methods=['GET','POST'])
+@login_required
 def owners_view():
     if request.method == 'POST':
+        # Get and sanitize form data
+        name = sanitize_input(request.form.get('name', ''))
+        national_id = sanitize_input(request.form.get('national_id', ''))
+        phone = sanitize_input(request.form.get('phone', ''))
+        email = sanitize_input(request.form.get('email', ''))
+        address = sanitize_input(request.form.get('address', ''))
+        sab_number = sanitize_input(request.form.get('sab_number', ''))
+
+        # Validation
+        if not name or len(name) < 2:
+            flash('اسم المالك مطلوب ويجب أن يكون حرفين على الأقل.', 'danger')
+            return redirect(url_for('owners_view'))
+
+        if national_id and not validate_national_id(national_id):
+            flash('رقم الهوية الوطنية يجب أن يكون 10 أرقام.', 'danger')
+            return redirect(url_for('owners_view'))
+
+        if phone and not validate_phone(phone):
+            flash('رقم الهاتف يجب أن يكون بتنسيق سعودي صحيح (05xxxxxxxx).', 'danger')
+            return redirect(url_for('owners_view'))
+
+        if email and not validate_email(email):
+            flash('البريد الإلكتروني غير صحيح.', 'danger')
+            return redirect(url_for('owners_view'))
+
+        # Check for duplicate national_id
+        if national_id:
+            existing_owner = Owner.query.filter_by(national_id=national_id).first()
+            if existing_owner:
+                flash('رقم الهوية الوطنية موجود بالفعل.', 'danger')
+                return redirect(url_for('owners_view'))
+
         # إنشاء مالك جديد
         o = Owner(
-            name=request.form.get('name'),
-            national_id=request.form.get('national_id'),
-            phone=request.form.get('phone'),
-            email=request.form.get('email'),
-            address=request.form.get('address'),
-            sab_number=request.form.get('sab_number')
+            name=name,
+            national_id=national_id,
+            phone=phone,
+            email=email,
+            address=address,
+            sab_number=sab_number
         )
         db.session.add(o)
         db.session.commit()
-        db.session.add(AuditLog(action=f"انشاء مالك {o.name}", user='system'))
+        db.session.add(AuditLog(action=f"إنشاء مالك {o.name}", user=current_user.username if current_user.is_authenticated else 'system'))
         db.session.commit()
-        flash('تم إضافة المالك.', 'success')
+        flash('تم إضافة المالك بنجاح.', 'success')
         return redirect(url_for('owners_view'))
+
     owners = Owner.query.all()
     return render_template('owners.html', owners=owners, active_page='owners')
 
@@ -825,17 +966,35 @@ def tenants_view():
         contract_number = request.form.get('contract_number')
         sab_number = request.form.get('sab_number')
 
-        # Handle file upload
+        # Handle file upload with security checks
         contract_file_path = None
         if 'contract_file' in request.files:
             file = request.files['contract_file']
             if file and file.filename:
+                # Security checks
+                if not allowed_file(file.filename):
+                    flash('نوع الملف غير مسموح به. يرجى رفع ملف PDF أو DOC أو صورة فقط.', 'danger')
+                    return redirect(url_for('tenants_view'))
+
+                # Check file size (additional check beyond MAX_CONTENT_LENGTH)
+                file.seek(0, os.SEEK_END)
+                file_size = file.tell()
+                file.seek(0)
+                if file_size > 10 * 1024 * 1024:  # 10MB limit for contracts
+                    flash('حجم الملف كبير جداً. الحد الأقصى 10 ميجابايت.', 'danger')
+                    return redirect(url_for('tenants_view'))
+
                 filename = secure_filename(file.filename)
-                # Add timestamp to avoid filename conflicts
+                # Add timestamp and random string to avoid filename conflicts
                 import time
                 timestamp = str(int(time.time()))
-                filename = f"{timestamp}_{filename}"
+                random_suffix = secrets.token_hex(4)
+                filename = f"{timestamp}_{random_suffix}_{filename}"
                 file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+
+                # Ensure upload directory exists
+                os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
                 file.save(file_path)
                 contract_file_path = filename  # Store only the filename, not the full path
 
@@ -1212,6 +1371,8 @@ def delete_unit(unit_id):
 
 # تسجيل دفعات
 @app.route('/payments', methods=['GET','POST'])
+@login_required
+@limiter.limit("100 per hour")
 def payments_view():
     units = Unit.query.all()
     owners_query = Owner.query.all()
@@ -1577,5 +1738,7 @@ if __name__ == '__main__':
         # Create upload folder if it doesn't exist
         if not os.path.exists(app.config['UPLOAD_FOLDER']):
             os.makedirs(app.config['UPLOAD_FOLDER'])
+
+    # For Railway deployment
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=port, debug=False)
