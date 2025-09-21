@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>شركة كثيب للاستثمار - الرئيسية</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://www.fontstatic.com/f=jazeera,jazeera-light" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='custom.css') }}">
+    <link rel="preload" href="{{ url_for('static', filename='custom.css') }}" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="{{ url_for('static', filename='custom.css') }}"></noscript>
 </head>
 <body>
     <!-- Particle Background -->
@@ -25,7 +25,7 @@
         </div>
     </div>
 
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark" role="navigation" aria-label="التنقل الرئيسي">
         <div class="container">
             <a class="navbar-brand" href="{{ url_for('dashboard') }}">
                 <img src="{{ url_for('static', filename='logo.svg') }}" alt="شركة كثيب للاستثمار" height="40">
@@ -42,6 +42,7 @@
         </div>
     </nav>
 
+    <main role="main">
     <section class="hero">
         <div class="container text-center">
             <h1 class="display-4">مرحباً بكم في شركة كثيب للاستثمار</h1>
@@ -134,15 +135,16 @@
             </div>
         </div>
     </section>
+    </main>
 
-    <footer class="bg-dark text-white py-4">
+    <footer class="bg-dark text-white py-4" role="contentinfo">
         <div class="container text-center">
             <p>&copy; 2025 شركة كثيب للاستثمار. جميع الحقوق محفوظة.</p>
             <p>العنوان: الرياض، المملكة العربية السعودية | الهاتف: 050-000-0000 | البريد: info@kthaib.com</p>
         </div>
     </footer>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer></script>
     <script>
         // Particle background effect for homepage
         document.addEventListener('DOMContentLoaded', function() {

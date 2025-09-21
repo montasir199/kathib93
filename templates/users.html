@@ -8,7 +8,7 @@
     <link href="{{ url_for('static', filename='custom.css') }}" rel="stylesheet">
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary" role="navigation" aria-label="التنقل الرئيسي">
         <div class="container">
             <a class="navbar-brand" href="{{ url_for('dashboard') }}">
                 <img src="{{ url_for('static', filename='logo.svg') }}" alt="شعار" width="30" height="30" class="me-2">
@@ -37,7 +37,7 @@
                 </div>
             </div>
 
-            <div class="col-md-9">
+            <div class="col-md-9" role="main">
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h2>إدارة المستخدمين</h2>
                     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">

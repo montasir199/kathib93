@@ -1,5 +1,31 @@
 /* Custom styles for Kthaib Investment Company */
 
+@font-face {
+  font-family: 'Jazeera';
+  src: url('https://www.fontstatic.com/fonts/jazeera/jazeera-regular.woff2') format('woff2'),
+       url('https://www.fontstatic.com/fonts/jazeera/jazeera-regular.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+  size-adjust: 100%;
+  ascent-override: 88%;
+  descent-override: 22%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: 'Jazeera Light';
+  src: url('https://www.fontstatic.com/fonts/jazeera-light/jazeera-light-regular.woff2') format('woff2'),
+       url('https://www.fontstatic.com/fonts/jazeera-light/jazeera-light-regular.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+  size-adjust: 100%;
+  ascent-override: 88%;
+  descent-override: 22%;
+  line-gap-override: 0%;
+}
+
 :root {
     --primary-color: #007bff;
     --secondary-color: #6c757d;

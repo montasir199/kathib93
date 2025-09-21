@@ -9,10 +9,11 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, send_file, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
-from flask_wtf.csrf import CSRFProtect
+from flask_wtf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from datetime import datetime, timedelta
+from flask_compress import Compress
+from datetime import datetime, timedelta, timezone
 import csv, io, json, os, secrets
 from openpyxl import Workbook
 from werkzeug.utils import secure_filename
@@ -21,6 +22,9 @@ from pymongo import MongoClient
 import re
 
 app = Flask(__name__)
+
+# Compression
+compress = Compress(app)
 
 # Security Configuration
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or secrets.token_hex(32)
@@ -104,14 +108,14 @@ def check_session_timeout():
         # Check if session has expired (2 hours of inactivity)
         last_activity = session.get('last_activity')
         if last_activity:
-            last_activity_time = datetime.fromisoformat(last_activity)
-            if datetime.utcnow() - last_activity_time > timedelta(hours=2):
+            last_activity_time = datetime.fromisoformat(last_activity).replace(tzinfo=timezone.utc)
+            if datetime.now(timezone.utc) - last_activity_time > timedelta(hours=2):
                 logout_user()
                 flash('انتهت صلاحية الجلسة بسبب عدم النشاط. يرجى تسجيل الدخول مرة أخرى.', 'info')
                 return redirect(url_for('login'))
 
         # Update last activity time
-        session['last_activity'] = datetime.utcnow().isoformat()
+        session['last_activity'] = datetime.now(timezone.utc).isoformat()
 
 # Security Headers
 @app.after_request
@@ -221,7 +225,7 @@ class Payment(db.Model):
     payer_type = db.Column(db.String(20))  # owner | tenant
     payer_id = db.Column(db.Integer)
     amount = db.Column(db.Float, nullable=False)
-    date = db.Column(db.DateTime, default=datetime.utcnow)
+    date = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     description = db.Column(db.String(255))
     company_rate = db.Column(db.Float, default=0.05) # نسبة الشركة (قابلة للتعديل عند التسجيل)
     vat_rate = db.Column(db.Float, default=0.15)     # معدل ضريبة القيمة المضافة (قابلة للتعديل)
@@ -235,7 +239,7 @@ class AuditLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     action = db.Column(db.String(255))
     user = db.Column(db.String(80))
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    timestamp = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -245,7 +249,7 @@ class User(UserMixin, db.Model):
     name = db.Column(db.String(120))
     email = db.Column(db.String(120))
     is_active = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     last_login = db.Column(db.DateTime)
     login_attempts = db.Column(db.Integer, default=0)
     locked_until = db.Column(db.DateTime)
@@ -290,14 +294,14 @@ class User(UserMixin, db.Model):
         """Reset login attempts on successful login"""
         self.login_attempts = 0
         self.locked_until = None
-        self.last_login = datetime.utcnow()
+        self.last_login = datetime.now(timezone.utc)
         db.session.commit()
 
     def generate_reset_token(self):
         """Generate password reset token"""
         import secrets
         self.password_reset_token = secrets.token_urlsafe(32)
-        self.password_reset_expires = datetime.utcnow() + timedelta(hours=1)
+        self.password_reset_expires = datetime.now(timezone.utc) + timedelta(hours=1)
         db.session.commit()
         return self.password_reset_token
 
@@ -1433,7 +1437,7 @@ def payments_view():
         if payment_date:
             payment_date = datetime.strptime(payment_date, '%Y-%m-%d')
         else:
-            payment_date = datetime.utcnow()
+            payment_date = datetime.now(timezone.utc)
 
         # التحقق من صحة payer_id
         if payer_type == 'owner':
@@ -1740,5 +1744,5 @@ if __name__ == '__main__':
             os.makedirs(app.config['UPLOAD_FOLDER'])
 
     # For Railway deployment
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=False)
+    port = int(os.environ.get('PORT', 8000))
+    app.run(host='127.0.0.1', port=port, debug=False)
