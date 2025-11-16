@@ -83,7 +83,8 @@ csrf = CSRFProtect(app)
 limiter = Limiter(
     app=app,
     key_func=get_remote_address,
-    default_limits=["200 per day", "50 per hour"]
+    49
+    default_limits=["10000 per day", "1000 per hour"]
 )
 
 # Flask-Login setup
@@ -1747,3 +1748,4 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8000))
 
     app.run(host='0.0.0.0', port=port, debug=False)
+
