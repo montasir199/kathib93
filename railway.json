@@ -4,11 +4,8 @@
   },
   "deploy": {
     "startCommand": "gunicorn --bind 0.0.0.0:$PORT app:app",
-    "healthcheckPath": "/",
-    "healthcheckTimeout": 300,
+
     "restartPolicyType": "ON_FAILURE",
-    "restartPolicyMaxRetries": 10
-  },
   "environments": {
     "production": {
       "variables": {
@@ -17,4 +14,5 @@
       }
     }
   }
+
 }
