@@ -13,6 +13,10 @@
         "DEBUG": "False"
       }
     }
+        ,"healthcheck": {
+                "disabled": true
+              }
   }
 
 }
+
