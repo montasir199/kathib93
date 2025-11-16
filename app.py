@@ -83,7 +83,6 @@ csrf = CSRFProtect(app)
 limiter = Limiter(
     app=app,
     key_func=get_remote_address,
-    49
     default_limits=["10000 per day", "1000 per hour"]
 )
 
@@ -1748,4 +1747,5 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8000))
 
     app.run(host='0.0.0.0', port=port, debug=False)
+
 
